@@ -6,7 +6,7 @@ Follow this [link](https://ledger.readthedocs.io/en/latest/userspace/getting_sta
 ## Get source
 Get source code to your local workspace, by calling:
 ```
-git clone https://git.sfxdx.ru/iost/ledger-nano.git
+git clone https://git.sfxdx.ru/iost/ledger-app-iost.git
 ```
 
 ### Ubuntu Dependencies
