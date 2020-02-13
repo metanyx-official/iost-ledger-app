@@ -34,6 +34,7 @@ https://ledger.readthedocs.io/en/latest/userspace/getting_started.html
 Then, use the Makefile to build and load the app:
 
 ```bash
+$ export BOLOS_SDK=sdk/nanos-secure-sdk
 $ make
 $ make load
 ```

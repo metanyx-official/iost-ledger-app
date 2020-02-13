@@ -11,7 +11,8 @@ subprocess.call([
     "--debug",
     "-m", "nanos",
     os.path.join(speculos_dir, "apps", "btc.elf"),
-    "--display", "text",
+    "--display", "headless",
+    "--vnc-port", os.environ["VNC_PORT"],
     "--apdu-port", os.environ["ADPU_PORT"]
 ])
 

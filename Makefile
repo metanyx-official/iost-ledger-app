@@ -94,6 +94,7 @@ ifneq ($(DEBUG),0)
         endif
 else
         DEFINES   += PRINTF\(...\)=
+        DEFINES   += BOLOS_RELEASE
 endif
 
 ##############
