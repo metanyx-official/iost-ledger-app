@@ -89,7 +89,14 @@ inline void aio_write(const uint8_t* in, int len) {
     Required global variables from SDK
 */
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+
+#ifdef TARGET_NANOX
+#include "ux.h"
+ux_state_t G_ux;
+bolos_ux_params_t G_ux_params;
+#else // TARGET_NANOX
 ux_state_t ux;
+#endif // TARGET_NANOX
 
 unsigned int ux_step;
 unsigned int ux_step_count;
@@ -183,6 +190,29 @@ void set_result_get_publicKey() {
     if (tmpCtx.publicKeyContext.getChaincode)
         aio_write(tmpCtx.publicKeyContext.chainCode, 32);
 }
+
+static void ui_idle(void);
+
+unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e) {
+    set_result_get_publicKey();
+    aio_write16(SW_OK);
+    // Send back the response, do not restart the event loop
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, g_aio.tx);
+    // Display back the original UX
+    ui_idle();
+    return 0; // do not redraw the widget
+}
+
+unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e) {
+    aio_write16(SW_USER_DENIAL);
+    // Send back the response, do not restart the event loop
+    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
+    // Display back the original UX
+    ui_idle();
+    return 0; // do not redraw the widget
+}
+
+#if defined(TARGET_NANOS)
 
 const ux_menu_entry_t menu_main[];
 
@@ -384,7 +414,6 @@ const bagl_element_t ui_approval_nanos[] = {
 
 };
 
-static void ui_idle(void);
 
 unsigned int ui_address_prepro(const bagl_element_t *element) {
     if (element->component.userid > 0) {
@@ -403,25 +432,6 @@ unsigned int ui_address_prepro(const bagl_element_t *element) {
         return display;
     }
     return 1;
-}
-
-unsigned int io_seproxyhal_touch_address_ok(const bagl_element_t *e) {
-    set_result_get_publicKey();
-    aio_write16(SW_OK);
-    // Send back the response, do not restart the event loop
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, g_aio.tx);
-    // Display back the original UX
-    ui_idle();
-    return 0; // do not redraw the widget
-}
-
-unsigned int io_seproxyhal_touch_address_cancel(const bagl_element_t *e) {
-    aio_write16(SW_USER_DENIAL);
-    // Send back the response, do not restart the event loop
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, 2);
-    // Display back the original UX
-    ui_idle();
-    return 0; // do not redraw the widget
 }
 
 unsigned int ui_address_nanos_button(unsigned int button_mask,
@@ -469,6 +479,8 @@ unsigned int ui_approval_prepro(const bagl_element_t *element) {
     }
     return display;
 }
+
+#endif //TARGET_NANOS
 
 unsigned int io_seproxyhal_touch_tx_ok(const bagl_element_t *e) {
     uint8_t privateKeyData[32];
@@ -544,13 +556,145 @@ unsigned int ui_approval_nanos_button(unsigned int button_mask,
     return 0;
 }
 
+
+#if defined(TARGET_NANOX)
+
+//////////////////////////////////////////////////////////////////////
+UX_STEP_NOCB(
+    ux_idle_flow_1_step, 
+    nn, 
+    {
+      "Application",
+      "is ready",
+    });
+UX_STEP_NOCB(
+    ux_idle_flow_3_step, 
+    bn, 
+    {
+      "Version",
+      APPVERSION,
+    });
+UX_STEP_VALID(
+    ux_idle_flow_4_step,
+    pb,
+    os_sched_exit(-1),
+    {
+      &C_icon_dashboard,
+      "Quit",
+    });
+UX_FLOW(ux_idle_flow,
+  &ux_idle_flow_1_step,
+  &ux_idle_flow_3_step,
+  &ux_idle_flow_4_step
+);
+
+//////////////////////////////////////////////////////////////////////
+
+UX_STEP_NOCB(ux_confirm_full_flow_1_step, 
+    pnn, 
+    {
+      &C_icon_eye,
+      "Review",
+      "transaction",
+    });
+UX_STEP_NOCB(
+    ux_confirm_full_flow_2_step, 
+    bnnn_paging, 
+    {
+      .title = "Amount",
+      .text = (char *)fullAmount
+    });
+UX_STEP_NOCB(
+    ux_confirm_full_flow_3_step, 
+    bnnn_paging, 
+    {
+      .title = "Address",
+      .text = (char *)fullAddress,
+    });
+UX_STEP_NOCB(
+    ux_confirm_full_flow_4_step, 
+    bnnn_paging, 
+    {
+      .title = feeName,
+      .text = (char *)fullFee,
+    });
+UX_STEP_VALID(
+    ux_confirm_full_flow_5_step, 
+    pbb, 
+    io_seproxyhal_touch_tx_ok(NULL),
+    {
+      &C_icon_validate_14,
+      "Accept",
+      "and send",
+    });
+UX_STEP_VALID(
+    ux_confirm_full_flow_6_step, 
+    pb, 
+    io_seproxyhal_touch_tx_cancel(NULL),
+    {
+      &C_icon_crossmark,
+      "Reject",
+    });
+// confirm_full: confirm transaction / Amount: fullAmount / Address: fullAddress / Fees: feesAmount
+UX_FLOW(ux_confirm_full_flow,
+  &ux_confirm_full_flow_1_step,
+  &ux_confirm_full_flow_2_step,
+  &ux_confirm_full_flow_3_step,
+  &ux_confirm_full_flow_4_step,
+  &ux_confirm_full_flow_5_step,
+  &ux_confirm_full_flow_6_step
+);
+
+//////////////////////////////////////////////////////////////////////
+
+
+UX_STEP_NOCB(
+    ux_display_public_flow_5_step, 
+    bnnn_paging, 
+    {
+      .title = "Address",
+      .text = (char *)fullAddress,
+    });
+UX_STEP_VALID(
+    ux_display_public_flow_6_step, 
+    pb, 
+    io_seproxyhal_touch_address_ok(NULL),
+    {
+      &C_icon_validate_14,
+      "Approve",
+    });
+UX_STEP_VALID(
+    ux_display_public_flow_7_step, 
+    pb, 
+    io_seproxyhal_touch_address_cancel(NULL),
+    {
+      &C_icon_crossmark,
+      "Reject",
+    });
+
+UX_FLOW(ux_display_public_flow,
+  &ux_display_public_flow_5_step,
+  &ux_display_public_flow_6_step,
+  &ux_display_public_flow_7_step
+);
+
+#endif // TARGET_NANOX
+
 /**
  * Display IDLE UI.
  * Normally, it should display Main Menu which user can interact.
  */
 static void ui_idle(void)
 {
+#if defined(TARGET_NANOS)
     UX_MENU_DISPLAY(0, menu_main, NULL);
+#elif defined(TARGET_NANOX)
+    // reserve a display stack slot if none yet
+    if(G_ux.stack_count == 0) {
+        ux_stack_push();
+    }
+    ux_flow_init(0, ux_idle_flow, NULL);
+#endif
 }
 
 /*------------------------------------------------------------------------------
@@ -824,9 +968,18 @@ void handleGetPublicKey() {
         os_memmove(fullAddress, tmpCtx.publicKeyContext.address, 43);
         fullAddress[42] = ' ';
         fullAddress[43] = '\0';
+
+#if defined(TARGET_NANOS)
         ux_step = 0;
         ux_step_count = 2;
         UX_DISPLAY(ui_address_nanos, ui_address_prepro);
+#elif defined(TARGET_NANOX)
+        // reserve a display stack slot if none yet
+        if(G_ux.stack_count == 0) {
+            ux_stack_push();
+        }
+        ux_flow_init(0, ux_display_public_flow, NULL);
+#endif
 
         g_aio.flags |= IO_ASYNCH_REPLY;
     }
@@ -1187,11 +1340,19 @@ void handleSign() {
             return;
         }
     }
-
     skipWarning = true;
+
+#if defined(TARGET_NANOS)
     ux_step = 0;
     ux_step_count = 5;
     UX_DISPLAY(ui_approval_nanos, ui_approval_prepro);
+#elif defined(TARGET_NANOX)
+    // reserve a display stack slot if none yet
+    if(G_ux.stack_count == 0) {
+        ux_stack_push();
+    }
+    ux_flow_init(0, ux_confirm_full_flow, NULL);
+#endif
 
     g_aio.flags |= IO_ASYNCH_REPLY;
 }
@@ -1233,6 +1394,8 @@ void app_main(void)
                     aio_write16(SW_NO_APDU);
                     continue;
                 }
+
+                PRINTF("New APDU received:\n%.*H\n", g_aio.rx, G_io_apdu_buffer);
 
                 if (g_aio_buf[OFFSET_CLA] != CLA) {
                     aio_write16(SW_BAD_CLA);
@@ -1276,15 +1439,31 @@ __attribute__((section(".boot"))) int main(int arg0) {
         BEGIN_TRY {
             TRY {
                 io_seproxyhal_init();
+
+#ifdef TARGET_NANOX
+                // grab the current plane mode setting
+                G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
+#endif // TARGET_NANOX
+
                 USB_power(0);
                 USB_power(1);
+
                 ui_idle();
+
+#ifdef HAVE_BLE
+                BLE_power(0, NULL);
+                BLE_power(1, "Nano X");
+#endif // HAVE_BLE
+
                 app_main();
             }
             CATCH(EXCEPTION_IO_RESET) {
+                // reset IO and UX
+                CLOSE_TRY;
                 continue;
             }
             CATCH_ALL {
+                CLOSE_TRY;
                 break;
             }
             FINALLY {

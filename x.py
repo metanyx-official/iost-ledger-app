@@ -5,10 +5,10 @@ import sys
 import imp
 import subprocess
 
-speculos_dir = sys.argv[1] if len(sys.argv) > 1 else "/tmp/speculos-master"
+speculos_dir = sys.argv[1] if len(sys.argv) > 1 else "."
 subprocess.call([
     os.path.join(speculos_dir, "speculos.py"),
-    "-debug",
+    "--debug",
     "-m", "nanos",
     os.path.join(speculos_dir, "apps", "btc.elf"),
     "--display", "text",

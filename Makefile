@@ -114,12 +114,7 @@ $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
 CC       := $(CLANGPATH)clang
-
-#CFLAGS   += -O0
-CFLAGS   += -O3 -Os
-
-AS     := $(GCCPATH)arm-none-eabi-gcc
-
+AS       := $(GCCPATH)arm-none-eabi-gcc
 LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
 LDLIBS   += -lm -lgcc -lc
@@ -137,20 +132,20 @@ SDK_SOURCE_PATH  += lib_ux
 endif
 
 load: all
-    python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
+	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
 
 load-offline: all
-    python -m ledgerblue.loadApp $(APP_LOAD_PARAMS) --offline
+	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS) --offline
 
 delete:
-    python -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
+	python -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
 
 release: all
-    export APP_LOAD_PARAMS_EVALUATED="$(shell printf '\\"%s\\" ' $(APP_LOAD_PARAMS))"; \
-    cat load-template.sh | envsubst > load.sh
-    chmod +x load.sh
-    tar -zcf iost-ledger-app-$(APPVERSION).tar.gz load.sh bin/app.hex
-    rm load.sh
+	export APP_LOAD_PARAMS_EVALUATED="$(shell printf '\\"%s\\" ' $(APP_LOAD_PARAMS))"; \
+	cat load-template.sh | envsubst > load.sh
+	chmod +x load.sh
+	tar -zcf iost-ledger-app-$(APPVERSION).tar.gz load.sh bin/app.hex
+	rm load.sh
 
 # import generic rules from the sdk
 include $(BOLOS_SDK)/Makefile.rules
@@ -161,4 +156,4 @@ dep/%.d: %.c Makefile
 
 
 listvariants:
-    @echo VARIANTS COIN iost
+	@echo VARIANTS COIN iost

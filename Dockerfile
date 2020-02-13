@@ -3,32 +3,40 @@ ENV ADPU_PORT 55555
 
 RUN apt-get update
 # common packages
-RUN apt-get -y install python3 wget unzip
+RUN apt-get -y install \
+    python3 wget unzip
 # arm cortex compiler
-RUN apt-get -y install llvm clang gcc-arm-none-eabi
+RUN apt-get -y install \
+    llvm clang \
+    gcc-arm-none-eabi libstdc++-arm-none-eabi-newlib
 # speculos dpendencies
 RUN apt-get -y install \
-    cmake perl-modules qemu-user-static \
-    gcc-arm-linux-gnueabihf libc6-dev-armhf-cross gdb-multiarch \
-    python3-pyelftools python3-mnemonic
-
-RUN adduser --disabled-password bob
+    python3-pil python3-pyelftools python3-mnemonic python3-setuptools python3-construct \
+    cmake perl-modules qemu-user-static libc6-dev-armhf-cross gdb-multiarch \
+    gcc-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabi
+#g++-multilib-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabi g++-8-multilib-arm-linux-gnueabi
+#gcc-multilib g++-multilib \
+# create limited user
+RUN adduser --quiet --disabled-password bob
 USER bob
 WORKDIR /home/bob
+
+# add sources
 ADD ./ ./
+#RUN sed -i 's/-I\/usr\/include/-I\/usr\/arm-linux-gnueabi\/include/' sdk/nanos-secure-sdk/Makefile.defines
 
 # download and build speculos
 RUN cd /tmp && \
-    wget https://codeload.github.com/LedgerHQ/speculos/zip/master && \
+    wget -q https://codeload.github.com/LedgerHQ/speculos/zip/master && \
     unzip master && \
-    cmake -Bbuild -Hspeculos-master -DCMAKE_BUILD_TYPE=Debug && \
-    make -C build && \
+    cd speculos-master && \
+    cmake -Bbuild -H. -DCMAKE_BUILD_TYPE=Debug && \
+    make -C build -j3 && \
     make -C build install
-
 
 # run app builder and emulator
 EXPOSE ${ADPU_PORT}
-CMD["python3", "x.py"]
+ENTRYPOINT ["python3", "x.py", "/tmp/speculos-master"]
 
 #build-essential libc6-i386 libc6-dev-i386 python python-pip libudev-dev libusb-1.0-0-dev python3-dev git
 #ENV BOLOS_ENV /work/bolos
