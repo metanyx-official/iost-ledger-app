@@ -26,7 +26,7 @@ APPVERSION_M=1
 APPVERSION_N=0
 APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
-APPNAME = "Boilerplate"
+APPNAME = "IOST"
 
 DEFINES += $(DEFINES_LIB)
 
@@ -137,20 +137,20 @@ SDK_SOURCE_PATH  += lib_ux
 endif
 
 load: all
-	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
+    python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
 
 load-offline: all
-	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS) --offline
+    python -m ledgerblue.loadApp $(APP_LOAD_PARAMS) --offline
 
 delete:
-	python -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
+    python -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
 
 release: all
-	export APP_LOAD_PARAMS_EVALUATED="$(shell printf '\\"%s\\" ' $(APP_LOAD_PARAMS))"; \
-	cat load-template.sh | envsubst > load.sh
-	chmod +x load.sh
-	tar -zcf boilerplate-ledger-app-$(APPVERSION).tar.gz load.sh bin/app.hex
-	rm load.sh
+    export APP_LOAD_PARAMS_EVALUATED="$(shell printf '\\"%s\\" ' $(APP_LOAD_PARAMS))"; \
+    cat load-template.sh | envsubst > load.sh
+    chmod +x load.sh
+    tar -zcf iost-ledger-app-$(APPVERSION).tar.gz load.sh bin/app.hex
+    rm load.sh
 
 # import generic rules from the sdk
 include $(BOLOS_SDK)/Makefile.rules
@@ -161,4 +161,4 @@ dep/%.d: %.c Makefile
 
 
 listvariants:
-	@echo VARIANTS COIN boilerplate
+    @echo VARIANTS COIN iost
