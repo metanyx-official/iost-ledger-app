@@ -45,3 +45,8 @@ Connect the Ledger device and open IOST app, and then run the script:
 #python demo.py
 ```
 
+Before compiling those applications, verify that the following environment variables are set
+
+  - BOLOS_SDK : must point to [secure_sdk_dev](https://github.com/LedgerHQ/blue-secure-sdk/tree/master) that  has been cloned from this repository
+  - BOLOS_ENV : must point to the location where the [toolchain](https://github.com/LedgerHQ/blue-devenv/tree/master) has been built
+
