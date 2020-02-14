@@ -8,17 +8,18 @@ RUN apt-get -y install \
     python3 wget
 # arm cortex compiler
 RUN apt-get -y install \
-    llvm clang \
-    gcc-arm-none-eabi libstdc++-arm-none-eabi-newlib
+    llvm clang gcc-arm-none-eabi
+#libstdc++-arm-none-eabi-newlib
 # blue-loader-python dependencies
 RUN apt-get -y install \
-    libudev-dev libusb-1.0-0-dev \
-    python3-dev python3-coverage python3-cryptography python3-hidapi python3-requests
+    libudev-dev libusb-1.0-0-dev python3-dev
+#    python3-dev python3-coverage python3-cryptography python3-hidapi python3-requests
 # speculos dpendencies
 RUN apt-get -y install \
     python3-pil python3-pyelftools python3-mnemonic python3-setuptools python3-construct \
     cmake libvncserver-dev perl-modules qemu-user-static \
-    gdb-multiarch libc6-dev-armhf-cross gcc-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabi
+    gcc-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabi
+#gdb-multiarch libc6-dev-armhf-cross
 #g++-multilib-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabi g++-8-multilib-arm-linux-gnueabi
 #gcc-multilib g++-multilib \
 # create limited user

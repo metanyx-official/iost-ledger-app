@@ -10,9 +10,9 @@ $ git clone https://git.sfxdx.ru/iost/ledger-app-iost.git
 ```
 
 ### Ubuntu Dependencies
-Install the following packages:
+Install the following packages :
 ```bash
-$ apt update && apt-get -y install build-essential git sudo wget cmake libssl-dev libgmp-dev autoconf libtool
+$ sudo apt update && sudo apt install -y wget git cmake python3
 ```
 
 ### OSX Dependencies
