@@ -1,0 +1,92 @@
+== u2flib-host ==
+Provides library functionality for communicating with a U2F device over USB.
+
+Two executables are provided, u2f-register and u2f-authenticate, which support
+the register and authenticated commands of U2F as defined in the
+http://fidoalliance.org/specifications/download[FIDO specifications].
+
+=== License ===
+This project is licensed under the BSD 2-clause license.
+See the COPYING file for the full license text.
+
+=== Installation ===
+u2flib-host is installable by running the following command:
+
+  # pip install python-u2flib-host
+
+Under Linux you will need to add a Udev rule to be able to access the U2F
+device, or run as root. For example, the Udev rule may contain the following:
+
+----
+#Udev rule for allowing HID access to Yubico devices for U2F support.
+
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", \
+  MODE="0664", GROUP="plugdev", ATTRS{idVendor}=="1050"
+----
+
+=== Dependencies ===
+u2flib-host is compatible with CPython 2.7, 3.3 onwards.
+
+To support HID devices, u2flib-host uses hidapi, which has a few dependencies
+for building. On a Debian based system, run the following command before
+installation:
+
+  # apt-get install build-essential python-dev cython libusb-1.0-0-dev \
+    libudev-dev
+
+The soft U2F device implementation requires link:https://pypi.python.org/pypi/cryptography[cryptography], the build
+dependencies can be installed with
+
+  # apt-get install libffi-dev libssl-dev
+
+=== Examples ===
+==== Library use ====
+
+[source, python]
+----
+from u2flib_host import u2f, exc
+
+# Enumerate available devices
+devices = u2f.list_devices()
+
+for device in devices:
+    # The with block ensures that the device is opened and closed.
+    with device as dev:
+        # Register the device with some service
+        registrationResponse = u2f.register(device, registrationRequest, facet)
+----
+
+==== Executable use ====
+The examples below use the soft U2F device to register and authenticate against
+the u2f_server example server from the 
+http://developers.yubico.com/python-u2flib-server[python-u2flib-server] project. 
+See that project for more details.
+The register step will create a new U2F key pair and store the credential in
+the soft_device.json file. The authenticate step will use this credential to
+sign a challenge given by the server.
+
+===== Registration =====
+The u2f-register command takes a RegisterRequest JSON object as input,
+registering the attached device and returns the registration response as
+output.
+
+----
+$ u2f-register -s soft_device.json http://localhost:8081
+Enter RegisterRequest JSON data...
+{"challenge": "K0aDxsacDNqrzlaGyLZoFYbXvCJcdIhq0SSaMz-lsV4", "version": "U2F_V2", "appId": "http://localhost:8081"}
+
+Touch the U2F device you wish to register...
+[{"clientData": "eyJvcmlnaW4iOiAiaHR0cDovL2xvY2FsaG9zdDo4MDgxIiwgImNoYWxsZW5nZSI6ICJLMGFEeHNhY0ROcXJ6bGFHeUxab0ZZYlh2Q0pjZElocTBTU2FNei1sc1Y0IiwgInR5cCI6ICJuYXZpZ2F0b3IuaWQuZmluaXNoRW5yb2xsbWVudCJ9", "registrationData": "BQTGnJVILHhzuTKg2XClCM5TJjF2WeK4fp9i6fj3VywzOk3d-O1sNaapAUPh-1GxoVCMY6s_jimP-nKqnZT-MGOCQIGD9Hs4qBCXMbfOPfzuB5zhFcOD95ddve67HXV8QeyPDKPZS5zDogvWyl8l4Tv2XRWGo4_6cAPPM4dPZcMreagwggGHMIIBLqADAgECAgkAmb7osQyi7BwwCQYHKoZIzj0EATAhMR8wHQYDVQQDDBZZdWJpY28gVTJGIFNvZnQgRGV2aWNlMB4XDTEzMDcxNzE0MjEwM1oXDTE2MDcxNjE0MjEwM1owITEfMB0GA1UEAwwWWXViaWNvIFUyRiBTb2Z0IERldmljZTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABDvhl91zfpg9n7DeCedcQ8gGXUnemiXoi-JEAxz-EIhkVsMPAyzhtJZ4V3CqMZ-MOUgICt2aMxacMX9cIa8dgS2jUDBOMB0GA1UdDgQWBBQNqL-TV04iaO6mS5tjGE6ShfexnjAfBgNVHSMEGDAWgBQNqL-TV04iaO6mS5tjGE6ShfexnjAMBgNVHRMEBTADAQH_MAkGByqGSM49BAEDSAAwRQIgXJWZdbvOWdhVaG7IJtn44o21Kmi8EHsDk4cAfnZ0r38CIQD6ZPi3Pl4lXxbY7BXFyrpkiOvCpdyNdLLYbSTbvIBQOTBEAiBk3N3-gH2WPhR7EOq2-vEqrC1EZXgYs7fofhYTNk9jqwIgcAVRCeXfCLfLO7X71vKVeXaRQKCJgvmRZdB8PoPVdjw"}]
+----
+
+===== Authentication =====
+The u2f-authenticate command takes an AuthenticateRequest JSON object as
+input, and returns the AuthenticateResponse as output.
+
+----
+$ u2f-authenticate -s soft_device.json http://localhost:8081
+Enter AuthenticateRequest JSON data...
+{"keyHandle": "gYP0ezioEJcxt849_O4HnOEVw4P3l1297rsddXxB7I8Mo9lLnMOiC9bKXyXhO_ZdFYajj_pwA88zh09lwyt5qA", "challenge": "zCfLJtWyaCk86Awi5VFtT7hhLk5yncYppYC0z2Q5xxo", "version": "U2F_V2", "appId": "http://localhost:8081"}
+
+{"clientData": "eyJvcmlnaW4iOiAiaHR0cDovL2xvY2FsaG9zdDo4MDgxIiwgImNoYWxsZW5nZSI6ICJ6Q2ZMSnRXeWFDazg2QXdpNVZGdFQ3aGhMazV5bmNZcHBZQzB6MlE1eHhvIiwgInR5cCI6ICJuYXZpZ2F0b3IuaWQuZ2V0QXNzZXJ0aW9uIn0", "challenge": "zCfLJtWyaCk86Awi5VFtT7hhLk5yncYppYC0z2Q5xxo", "keyHandle": "gYP0ezioEJcxt849_O4HnOEVw4P3l1297rsddXxB7I8Mo9lLnMOiC9bKXyXhO_ZdFYajj_pwA88zh09lwyt5qA", "signatureData": "AQAAAAEwRAIgK8HLGu8SQNPC3hI1700RsTtyXLlsn9_1sEcIcobhDi0CIFzduJ5IdGus-I-ieHTX1R-1xRCA0e29I9kChKbkkIzF"}
+----
