@@ -27,7 +27,7 @@ USER bob
 WORKDIR /home/bob
 
 
-# add sources and build app and speculos
+# add sources and build app and sdk
 ADD ./ ./.app
 RUN cp -r .app app
 RUN sed -i 's/-I\/usr\/include/-I\/usr\/arm-linux-gnueabi\/include/' app/sdk/nanos-secure-sdk/Makefile.defines
@@ -37,10 +37,9 @@ RUN cd app/sdk/python-yubicommon && \
     cd ../python-u2flib-host && \
     python3 setup.py install --user && \
     cd ../blue-loader-python && \
-    python3 setup.py install --user
-
-
-
+    python3 setup.py install --user && \
+    cd ../.. && \
+    env BOLOS_SDK=sdk/nanos-secure-sdk make
 RUN cd app/sdk/speculos && \
     cmake -Bbuild -H. -DCMAKE_BUILD_TYPE=Debug -DWITH_VNC=1 && \
     make -C build -j3 && \

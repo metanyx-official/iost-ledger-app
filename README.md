@@ -51,3 +51,9 @@ Before compiling those applications, verify that the following environment varia
   - BOLOS_SDK : must point to [secure_sdk_dev](https://github.com/LedgerHQ/blue-secure-sdk/tree/master) that  has been cloned from this repository
   - BOLOS_ENV : must point to the location where the [toolchain](https://github.com/LedgerHQ/blue-devenv/tree/master) has been built
 
+## Run docker container
+
+```
+#docker build -t ledger-app-iost . && \
+ docker run -it -p 4444:4444 -p 55555:55555 -v /dev:/dev --privileged --rm --name ledger-app-iost ledger-app-iost
+```
