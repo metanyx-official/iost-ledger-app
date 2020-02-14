@@ -1,0 +1,1 @@
+import sys, os; print([os.path.join(p, '#') for p in sys.path if os.path.exists(os.path.join(p, '#'))][-1:][0])

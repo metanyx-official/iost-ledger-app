@@ -10,6 +10,10 @@ RUN apt-get -y install \
 RUN apt-get -y install \
     llvm clang \
     gcc-arm-none-eabi libstdc++-arm-none-eabi-newlib
+# blue-loader-python dependencies
+RUN apt-get -y install \
+    libudev-dev libusb-1.0-0-dev \
+    python3-dev python3-coverage python3-cryptography python3-hidapi python3-requests
 # speculos dpendencies
 RUN apt-get -y install \
     python3-pil python3-pyelftools python3-mnemonic python3-setuptools python3-construct \
@@ -22,10 +26,21 @@ RUN adduser --quiet --disabled-password bob
 USER bob
 WORKDIR /home/bob
 
-# add sources and build speculos and app
+
+# add sources and build app and speculos
 ADD ./ ./.app
 RUN cp -r .app app
 RUN sed -i 's/-I\/usr\/include/-I\/usr\/arm-linux-gnueabi\/include/' app/sdk/nanos-secure-sdk/Makefile.defines
+RUN cd app/sdk/python-yubicommon && \
+    python3 setup.py install --user && \
+    ln -s $(../build-helpers/find-installed-package.sh yubicommon) ../python-u2flib-host/vendor/yubicommon && \
+    cd ../python-u2flib-host && \
+    python3 setup.py install --user && \
+    cd ../blue-loader-python && \
+    python3 setup.py install --user
+
+
+
 RUN cd app/sdk/speculos && \
     cmake -Bbuild -H. -DCMAKE_BUILD_TYPE=Debug -DWITH_VNC=1 && \
     make -C build -j3 && \
