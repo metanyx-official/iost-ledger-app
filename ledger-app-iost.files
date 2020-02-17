@@ -36,8 +36,12 @@ src/get_public_key.c
 src/get_public_key.h
 src/globals.h
 src/handlers.h
+src/hedera.h
+src/hedera.c
 src/io.c
 src/io.h
+src/iost.c
+src/iost.h
 src/main.c
 src/printf.c
 src/printf.h

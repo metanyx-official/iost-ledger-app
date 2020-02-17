@@ -45,7 +45,7 @@ endif
 ################
 # Default rule #
 ################
-all: proto default
+all: cleanpb proto default
 
 ############
 # Platform #
@@ -122,22 +122,18 @@ ifeq ($(GCCPATH),)
 $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
-NANOPB   := $(NANOPB)
 CC       := $(CLANGPATH)clang
 AS       := $(GCCPATH)arm-none-eabi-gcc
 LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
 LDLIBS   += -lm -lgcc -lc
-# enable color from inside a script
-CFLAGS   += -fcolor-diagnostics
-# nanopb
-CFLAGS   += -Iproto -I$(NANOPB)
+
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs
 
 ### variables processed by the common makefile.rules of the SDK to grab source files and include dirs
-APP_SOURCE_PATH  += src proto
+APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl lib_u2f
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
@@ -175,10 +171,8 @@ include $(BOLOS_SDK)/Makefile.rules
 #add dependency on custom makefile filename
 dep/%.d: %.c Makefile
 
-
 listvariants:
 	@echo VARIANTS COIN $(APPNAME)
-
 
 #check:
 #	@ clang-tidy \
@@ -187,15 +181,26 @@ listvariants:
 #		$(addprefix -D, $(DEFINES)) \
 #		$(addprefix -I, $(INCLUDES_PATH))
 
-$(NANOPB)/generator/proto/nanopb_pb2.py:
-	@ make -C $(NANOPB)/generator/proto
+sdk/ledger-nanopb/generator/proto/nanopb_pb2.py:
+	@ make -C sdk/ledger-nanopb/generator/proto
 
 # TODO: Figure out a way to do this without copying .c files
 .PHONY: proto
-proto: $(NANOPB)/generator/proto/nanopb_pb2.py
-	@ cp $(NANOPB)/*.c src/
+proto: sdk/ledger-nanopb/generator/proto/nanopb_pb2.py
+	@ cp -fr sdk/ledger-nanopb/pb_*.c sdk/ledger-nanopb/pb*.h src/
+	@ echo 'syntax = "proto3";' | tee src/$(APPNAME)_api.proto
+	@ echo 'import "nanopb.proto";' | tee -a src/$(APPNAME)_api.proto
+	@ grep -A 10 'message Action' sdk/go-iost/rpc/pb/rpc.proto | grep -B 10 -e '^}' | tee -a src/$(APPNAME)_api.proto
+	@ grep -A 10 'message AmountLimit' sdk/go-iost/rpc/pb/rpc.proto | grep -B 10 -e '^}' | tee -a src/$(APPNAME)_api.proto
+	@ grep -A 50 'message TxReceipt' sdk/go-iost/rpc/pb/rpc.proto | grep -B 50 -e '^}' | tee -a src/$(APPNAME)_api.proto
+	@ grep -A 50 'message Transaction' sdk/go-iost/rpc/pb/rpc.proto | grep -B 50 -e '^}' | tee -a src/$(APPNAME)_api.proto
 	@ protoc \
-		--plugin=protoc-gen-nanopb=$(NANOPB)/generator/protoc-gen-nanopb \
-		--nanopb_out=proto/ \
-		-I=$(NANOPB)/generator/proto \
-		sdk/go-iost/rpc/pb/rpc.proto
+		--plugin=protoc-gen-nanopb=sdk/ledger-nanopb/generator/protoc-gen-nanopb \
+		--nanopb_out=src/ \
+		-I=sdk/ledger-nanopb/generator/proto \
+		-I=src \
+		src/$(APPNAME)_api.proto
+
+.PHONY: cleanpb
+cleanpb:
+	@ rm -fr src/pb_*.c src/pb*.h src/*.pb.h src/*.pb.c src/*_api.proto

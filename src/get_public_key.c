@@ -201,7 +201,7 @@ UX_DEF(
 
 void get_pk() {
     // Derive Key
-    hedera_derive_keypair(ctx.key_index, NULL, &ctx.public);
+    iost_derive_keypair(ctx.key_index, NULL, &ctx.public);
 
     // Put Key bytes in APDU buffer
     public_key_to_bytes(G_io_apdu_buffer, &ctx.public);
@@ -228,10 +228,10 @@ void handle_get_public_key(
     ctx.key_index = U4LE(buffer, 0);
 
     // Title for Nano X compare screen
-    hedera_snprintf(ctx.ui_approve_l1, 40, "Public Key #%u", ctx.key_index);
+    iost_snprintf(ctx.ui_approve_l1, 40, "Public Key #%u", ctx.key_index);
 
     // Complete "Export Public | Key #x?"
-    hedera_snprintf(ctx.ui_approve_l2, 40, "Key #%u?", ctx.key_index);
+    iost_snprintf(ctx.ui_approve_l2, 40, "Key #%u?", ctx.key_index);
 
     // Populate context with PK
     get_pk();
