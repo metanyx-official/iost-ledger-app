@@ -1,6 +1,6 @@
 #*******************************************************************************
-#   Ledger App
-#   (c) 2017 Ledger
+#   Ledger App IOST
+#   (c) 2020 Stanislav Shihalev <sshihalev@sfxdx.ru>
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -31,10 +31,14 @@ APPNAME = "IOST"
 DEFINES += $(DEFINES_LIB)
 
 
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-    ICONNAME=glyphs/nanox_app_iost.gif
+ifeq ($(TARGET_NAME),TARGET_BLUE)
+ICONNAME=glyphs/blue_app_$(APPNAME).gif
 else
-    ICONNAME=glyphs/nanos_app_iost.gif
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+ICONNAME=glyphs/nanox_app_$(APPNAME).gif
+else
+ICONNAME=glyphs/nanos_app_$(APPNAME).gif
+endif
 endif
 
 
@@ -47,26 +51,24 @@ all: default
 # Platform #
 ############
 
-DEFINES   += OS_IO_SEPROXYHAL
+DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=300
 DEFINES   += HAVE_BAGL HAVE_SPRINTF
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
 DEFINES   += LEDGER_MAJOR_VERSION=$(APPVERSION_M) LEDGER_MINOR_VERSION=$(APPVERSION_N) LEDGER_PATCH_VERSION=$(APPVERSION_P)
+DEFINES   += APPVERSION_M=$(APPVERSION_M) APPVERSION_N=$(APPVERSION_N) APPVERSION_P=$(APPVERSION_P)
 
 # U2F
 DEFINES   += HAVE_U2F HAVE_IO_U2F
-DEFINES   += U2F_PROXY_MAGIC=\"BOIL\"
+DEFINES   += U2F_PROXY_MAGIC=\"$(APPNAME)\"
 DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += BLE_SEGMENT_SIZE=32 #max MTU, min 20
 
-WEBUSB_URL     = www.ledgerwallet.com
-DEFINES       += HAVE_WEBUSB WEBUSB_URL_SIZE_B=$(shell echo -n $(WEBUSB_URL) | wc -c) WEBUSB_URL=$(shell echo -n $(WEBUSB_URL) | sed -e "s/./\\\'\0\\\',/g")
-
+WEBUSB_URL = www.ledgerwallet.com
+DEFINES   += HAVE_WEBUSB WEBUSB_URL_SIZE_B=$(shell echo -n $(WEBUSB_URL) | wc -c) WEBUSB_URL=$(shell echo -n $(WEBUSB_URL) | sed -e "s/./\\\'\0\\\',/g")
 DEFINES   += UNUSED\(x\)=\(void\)x
 DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
-
 ifeq ($(TARGET_NAME),TARGET_NANOX)
-DEFINES   	  += IO_SEPROXYHAL_BUFFER_SIZE_B=300
 DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
 DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
 
@@ -76,12 +78,9 @@ DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-else
-DEFINES   	  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+DEFINES       += HAVE_UX_FLOW
 endif
 
-# Both nano S and X benefit from the flow.
-DEFINES       += HAVE_UX_FLOW
 
 # Enabling debug PRINTF
 DEBUG = 0
@@ -132,6 +131,14 @@ SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
 SDK_SOURCE_PATH  += lib_ux
 endif
 
+# If the SDK supports Flow for Nano S, build for it
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+	ifneq "$(wildcard $(BOLOS_SDK)/lib_ux/src/ux_flow_engine.c)" ""
+		SDK_SOURCE_PATH  += lib_ux
+		DEFINES                += HAVE_UX_FLOW
+	endif
+endif
+
 load: all
 	python3 -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
 
@@ -155,6 +162,5 @@ include $(BOLOS_SDK)/Makefile.rules
 dep/%.d: %.c Makefile
 
 
-
 listvariants:
-	@echo VARIANTS COIN iost
+	@echo VARIANTS COIN $(APPNAME)

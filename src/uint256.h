@@ -16,6 +16,9 @@
 ********************************************************************************/
 
 // Adapted from https://github.com/calccrypto/uint256_t
+#ifndef LEDGER_APP_IOST_UINT256_H
+#define LEDGER_APP_IOST_UINT256_H
+
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -63,3 +66,5 @@ bool tostring128(uint128_t *number, uint32_t base, char *out,
                  uint32_t outLength);
 bool tostring256(uint256_t *number, uint32_t base, char *out,
                  uint32_t outLength);
+
+#endif //LEDGER_APP_IOST_UINT256_H

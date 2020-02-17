@@ -1,9 +1,8 @@
-#include "os.h"
-#include "cx.h"
-#include "globals.h"
+#ifndef LEDGER_APP_IOST_UTILS_H
+#define LEDGER_APP_IOST_UTILS_H
 
-#ifndef _UTILS_H_
-#define _UTILS_H_
+#include "globals.h"
+#include "ui.h"
 
 typedef enum rlpTxType {
     TX_LENGTH = 0,
@@ -14,9 +13,9 @@ typedef enum rlpTxType {
     TX_FEE
 } rlpTxType;
 
-unsigned int ui_prepro(const bagl_element_t *element);
+//unsigned int ui_prepro(const bagl_element_t *element);
 
-void getAddressStringFromBinary(uint8_t *publicKey, char *address);
+//void getAddressStringFromBinary(uint8_t *publicKey, char *address);
 
 void getPublicKey(uint32_t accountNumber, uint8_t *publicKeyArray);
 
@@ -52,4 +51,4 @@ void sendResponse(uint8_t tx, bool approve);
         (text), 0, 0, 0, NULL, NULL, NULL                                  \
     }
 
-#endif
+#endif //LEDGER_APP_IOST_UTILS_H
