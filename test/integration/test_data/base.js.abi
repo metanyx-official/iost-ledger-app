@@ -1,0 +1,22 @@
+{
+  "lang": "javascript",
+  "version": "1.0.0",
+  "abi": [
+    {
+      "name": "stat",
+      "args": []
+    },
+    {
+      "name": "initWitness",
+      "args": [
+          "json"
+      ]
+    },
+    {
+      "name": "issueContribute",
+      "args": [
+          "json"
+      ]
+    }
+  ]
+}
