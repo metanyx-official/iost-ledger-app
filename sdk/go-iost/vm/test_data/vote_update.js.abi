@@ -1,0 +1,80 @@
+{
+    "lang": "javascript",
+    "version": "1.0.0",
+    "abi": [
+        {
+            "name": "constructor",
+            "args": []
+        },
+        {
+            "name": "init",
+            "args": []
+        },
+        {
+            "name": "can_update",
+            "args": ["string"]
+        },
+        {
+            "name": "initProducer",
+            "args": [
+                "string"
+            ]
+        },
+        {
+            "name": "registerProducer",
+            "args": [
+                "string",
+                "string",
+                "string",
+                "string"
+            ]
+        },
+        {
+            "name": "updateProducer",
+            "args": [
+                "string",
+                "string",
+                "string",
+                "string"
+            ]
+        },
+        {
+            "name": "logInProducer",
+            "args": [
+                "string"
+            ]
+        },
+        {
+            "name": "logOutProducer",
+            "args": [
+                "string"
+            ]
+        },
+        {
+            "name": "unregisterProducer",
+            "args": [
+                "string"
+            ]
+        },
+        {
+            "name": "vote",
+            "args": [
+                "string",
+                "string",
+                "number"
+            ]
+        },
+        {
+            "name": "unvote",
+            "args": [
+                "string",
+                "string",
+                "number"
+            ]
+        },
+        {
+            "name": "stat",
+            "args": []
+        }
+    ]
+}
