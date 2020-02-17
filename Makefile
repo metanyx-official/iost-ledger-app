@@ -122,17 +122,22 @@ ifeq ($(GCCPATH),)
 $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
+NANOPB   := $(NANOPB)
 CC       := $(CLANGPATH)clang
 AS       := $(GCCPATH)arm-none-eabi-gcc
 LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
 LDLIBS   += -lm -lgcc -lc
+# enable color from inside a script
+CFLAGS   += -fcolor-diagnostics
+# nanopb
+CFLAGS   += -Iproto -I$(NANOPB)
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs
 
 ### variables processed by the common makefile.rules of the SDK to grab source files and include dirs
-APP_SOURCE_PATH  += src
+APP_SOURCE_PATH  += src proto
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl lib_u2f
 
 ifeq ($(TARGET_NAME),TARGET_NANOX)
@@ -173,3 +178,24 @@ dep/%.d: %.c Makefile
 
 listvariants:
 	@echo VARIANTS COIN $(APPNAME)
+
+
+#check:
+#	@ clang-tidy \
+#		$(foreach path, $(APP_SOURCE_PATH), $(shell find $(path) -name "*.c" -and -not -name "pb*" -and -not -name "glyphs*")) -- \
+#		$(CFLAGS) \
+#		$(addprefix -D, $(DEFINES)) \
+#		$(addprefix -I, $(INCLUDES_PATH))
+
+$(NANOPB)/generator/proto/nanopb_pb2.py:
+	@ make -C $(NANOPB)/generator/proto
+
+# TODO: Figure out a way to do this without copying .c files
+.PHONY: proto
+proto: $(NANOPB)/generator/proto/nanopb_pb2.py
+	@ cp $(NANOPB)/*.c src/
+	@ protoc \
+		--plugin=protoc-gen-nanopb=$(NANOPB)/generator/protoc-gen-nanopb \
+		--nanopb_out=proto/ \
+		-I=$(NANOPB)/generator/proto \
+		sdk/go-iost/rpc/pb/rpc.proto

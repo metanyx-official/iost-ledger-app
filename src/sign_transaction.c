@@ -1,17 +1,12 @@
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+#include "utils.h"
 #include "printf.h"
-#include "globals.h"
 #include "debug.h"
 #include "errors.h"
 #include "handlers.h"
 #include "io.h"
-#include "Transaction.pb.h"
-#include "utils.h"
-#include "ui.h"
 #include "sign_transaction.h"
+//#include <rpc.pb.h>
+#include <stdbool.h>
 
 static struct sign_tx_context_t {
     // ui common
@@ -37,7 +32,7 @@ static struct sign_tx_context_t {
     uint16_t raw_transaction_length;
 
     // Parsed transaction
-    HederaTransactionBody transaction;
+    Transaction transaction;
 } ctx;
 
 #if defined(TARGET_NANOS)

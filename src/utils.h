@@ -1,7 +1,6 @@
 #ifndef LEDGER_APP_IOST_UTILS_H
 #define LEDGER_APP_IOST_UTILS_H
 
-#include "globals.h"
 #include "ui.h"
 
 typedef enum rlpTxType {

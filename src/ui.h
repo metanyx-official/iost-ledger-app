@@ -1,8 +1,8 @@
 #ifndef LEDGER_APP_IOST_UI_H
 #define LEDGER_APP_IOST_UI_H
 
-#include "glyphs.h"
 #include "globals.h"
+#include "glyphs.h"
 
 #if defined(TARGET_NANOS)
 
