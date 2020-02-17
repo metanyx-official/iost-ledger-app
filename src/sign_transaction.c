@@ -8,6 +8,7 @@
 #include "errors.h"
 #include "handlers.h"
 #include "io.h"
+#include "Transaction.pb.h"
 #include "utils.h"
 #include "ui.h"
 #include "sign_transaction.h"
@@ -34,6 +35,9 @@ static struct sign_tx_context_t {
     // Raw transaction from APDU
     uint8_t raw_transaction[MAX_TX_SIZE];
     uint16_t raw_transaction_length;
+
+    // Parsed transaction
+    HederaTransactionBody transaction;
 } ctx;
 
 #if defined(TARGET_NANOS)
