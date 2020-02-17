@@ -12,7 +12,8 @@ RUN apt-get -y install \
 #libstdc++-arm-none-eabi-newlib
 # blue-loader-python dependencies
 RUN apt-get -y install \
-    libudev-dev libusb-1.0-0-dev python3-dev
+    libudev-dev libusb-1.0-0-dev python3-dev \
+    protobuf-compiler python-protobuf
 #    python3-dev python3-coverage python3-cryptography python3-hidapi python3-requests
 # speculos dpendencies
 RUN apt-get -y install \
@@ -28,7 +29,7 @@ USER bob
 WORKDIR /home/bob
 
 
-# add sources and build app and sdk
+# add sources and build sdk
 ADD ./ ./.app
 RUN cp -r .app app
 RUN sed -i 's/-I\/usr\/include/-I\/usr\/arm-linux-gnueabi\/include/' app/sdk/nanos-secure-sdk/Makefile.defines
@@ -38,9 +39,9 @@ RUN cd app/sdk/python-yubicommon && \
     cd ../python-u2flib-host && \
     python3 setup.py install --user && \
     cd ../blue-loader-python && \
-    python3 setup.py install --user && \
-    cd ../.. && \
-    env BOLOS_SDK=sdk/nanos-secure-sdk make
+    python3 setup.py install --user
+
+# build and install speculos
 RUN cd app/sdk/speculos && \
     cmake -Bbuild -H. -DCMAKE_BUILD_TYPE=Debug -DWITH_VNC=1 && \
     make -C build -j3 && \
@@ -49,7 +50,7 @@ RUN cd app/sdk/speculos && \
 # run app builder and emulator
 EXPOSE ${ADPU_PORT}
 EXPOSE ${VNC_PORT}
-ENTRYPOINT ["python3", "app/x.py", "app/sdk/speculos"]
+ENTRYPOINT ["python3", "app/x.py"]
 
 #build-essential libc6-i386 libc6-dev-i386 python python-pip libudev-dev libusb-1.0-0-dev python3-dev git
 #ENV BOLOS_ENV /work/bolos

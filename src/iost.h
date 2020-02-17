@@ -1,7 +1,6 @@
 #ifndef LEDGER_APP_IOST_IOST_H
 #define LEDGER_APP_IOST_IOST_H
 
-#include "IOST_api.pb.h"
 #include <stdint.h>
 
 struct _Transaction;

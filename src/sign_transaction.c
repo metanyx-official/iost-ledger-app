@@ -9,6 +9,9 @@
 #include "ui.h"
 #include "iost.h"
 #include "pb_decode.h"
+#include "pb_encode.h"
+#include "pb_common.h"
+#include "IOST_api.pb.h"
 #include <stdbool.h>
 
 static struct sign_tx_context_t {
