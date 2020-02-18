@@ -15,15 +15,18 @@
 #  limitations under the License.
 #*******************************************************************************
 
+
 ifeq ($(BOLOS_SDK),)
 $(error Environment variable BOLOS_SDK is not set)
 endif
+
+
 include $(BOLOS_SDK)/Makefile.defines
 
 #########
 #  App  #
 #########
-APP_LOAD_PARAMS= --curve ed25519 --path "44'/3030'" --appFlags 0x240 $(COMMON_LOAD_PARAMS)
+APP_LOAD_PARAMS= --curve ed25519 --path "44'/48209'" --appFlags 0x240 $(COMMON_LOAD_PARAMS)
 
 APPVERSION_M = 1
 APPVERSION_N = 0
@@ -32,22 +35,16 @@ APPVERSION = $(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 APPNAME = IOST
 
 
-
-DEFINES += $(DEFINES_LIB)
-
-
 ifeq ($(TARGET_NAME),TARGET_BLUE)
-ICONNAME=images/blue_app_$(APPNAME).gif
+ICONNAME = images/blue_app_$(APPNAME).gif
 else
 ifeq ($(TARGET_NAME),TARGET_NANOX)
-ICONNAME=images/nanox_app_$(APPNAME).gif
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-ICONNAME=images/nanos_app_$(APPNAME).gif
+ICONNAME = images/nanox_app_$(APPNAME).gif
 else
-$(error Unknown target)
+ICONNAME = images/nanos_app_$(APPNAME).gif
 endif
 endif
-endif
+
 
 ################
 # Default rule #
@@ -57,6 +54,7 @@ all: cleanpb proto default
 ############
 # Platform #
 ############
+DEFINES += $(DEFINES_LIB)
 
 DEFINES   += OS_IO_SEPROXYHAL
 DEFINES   += HAVE_BAGL
