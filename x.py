@@ -7,22 +7,23 @@ import subprocess
 
 app_dir = os.path.dirname(os.path.abspath(__file__))
 
-for args in (["clean", "cleanpb", "proto"], []):
+if len(sys.argv) == 1 \
+and os.path.basename(os.path.abspath(sys.argv[0])) == os.path.basename(os.path.abspath(__file__)) \
+    for args in (["clean", "cleanpb", "proto"], []):
+        subprocess.call([
+            "env",
+            "BOLOS_SDK=" + os.path.join("sdk", "nanos-secure-sdk"),
+            "make"
+        ] + args, cwd=app_dir)
     subprocess.call([
-        "env",
-        "BOLOS_SDK=" + os.path.join("sdk", "nanos-secure-sdk"),
-        "make"
-    ] + args, cwd=app_dir)
-
-subprocess.call([
-    os.path.join(app_dir, "sdk", "speculos", "speculos.py"),
-    "--debug",
-    "-m", "nanos",
-    os.path.join(app_dir, "bin", "app.elf"),
-    "--display", "headless",
-    "--vnc-port", os.environ["VNC_PORT"],
-    "--apdu-port", os.environ["ADPU_PORT"]
-])
+        os.path.join(app_dir, "sdk", "speculos", "speculos.py"),
+        "--debug",
+        "-m", "nanos",
+        os.path.join(app_dir, "bin", "app.elf"),
+        "--display", "headless",
+        "--vnc-port", os.environ["VNC_PORT"],
+        "--apdu-port", os.environ["ADPU_PORT"]
+    ])
 
 #os.path.join(speculos_dir, "apps", "btc.elf"),
 #./speculos.py

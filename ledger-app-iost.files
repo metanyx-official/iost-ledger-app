@@ -10,6 +10,7 @@ x.py
 doc/Ed25519_BIP32.pdf
 doc/APDUs.md
 doc/iost.asc
+glyphs/boilerplate_logo.gif
 glyphs/icon_crossmark.gif
 glyphs/icon_left.gif
 glyphs/icon_dashboard.gif
@@ -22,9 +23,9 @@ glyphs/icon_back.gif
 glyphs/badge_IOST.gif
 glyphs/icon_toggle_set.gif
 glyphs/icon_toggle_reset.gif
-glyphs/icon_IOST.gif
 glyphs/icon_down.gif
-glyphs/nanox_app_iost.gif
+glyphs/nanos_app_IOST.gif
+glyphs/nanox_app_IOST.gif
 glyphs/icon_eye.gif
 glyphs/icon_validate_14.gif
 glyphs/icon_certificate.gif
@@ -36,8 +37,6 @@ src/get_public_key.c
 src/get_public_key.h
 src/globals.h
 src/handlers.h
-src/hedera.h
-src/hedera.c
 src/io.c
 src/io.h
 src/iost.c

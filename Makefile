@@ -20,27 +20,34 @@ $(error Environment variable BOLOS_SDK is not set)
 endif
 include $(BOLOS_SDK)/Makefile.defines
 
-APP_LOAD_PARAMS= --curve ed25519 --path "44'/1234'" --appFlags 0x240 $(COMMON_LOAD_PARAMS)
+#########
+#  App  #
+#########
+APP_LOAD_PARAMS= --curve ed25519 --path "44'/3030'" --appFlags 0x240 $(COMMON_LOAD_PARAMS)
 
-APPVERSION_M=1
-APPVERSION_N=0
-APPVERSION_P=0
-APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
-APPNAME = "IOST"
+APPVERSION_M = 1
+APPVERSION_N = 0
+APPVERSION_P = 0
+APPVERSION = $(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
+APPNAME = IOST
+
+
 
 DEFINES += $(DEFINES_LIB)
 
 
 ifeq ($(TARGET_NAME),TARGET_BLUE)
-ICONNAME=glyphs/blue_app_$(APPNAME).gif
+ICONNAME=images/blue_app_$(APPNAME).gif
 else
 ifeq ($(TARGET_NAME),TARGET_NANOX)
-ICONNAME=glyphs/nanox_app_$(APPNAME).gif
+ICONNAME=images/nanox_app_$(APPNAME).gif
+ifeq ($(TARGET_NAME),TARGET_NANOS)
+ICONNAME=images/nanos_app_$(APPNAME).gif
 else
-ICONNAME=glyphs/nanos_app_$(APPNAME).gif
+$(error Unknown target)
 endif
 endif
-
+endif
 
 ################
 # Default rule #
@@ -52,7 +59,7 @@ all: cleanpb proto default
 ############
 
 DEFINES   += OS_IO_SEPROXYHAL
-DEFINES   += HAVE_BAGL HAVE_SPRINTF
+DEFINES   += HAVE_BAGL
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
 DEFINES   += APPVERSION_M=$(APPVERSION_M) APPVERSION_N=$(APPVERSION_N) APPVERSION_P=$(APPVERSION_P)
 
@@ -60,8 +67,10 @@ DEFINES   += APPVERSION_M=$(APPVERSION_M) APPVERSION_N=$(APPVERSION_N) APPVERSIO
 DFEFINES  += PB_FIELD_32BIT=1
 
 # printf
+# ifneq ($(TARGET_NAME),TARGET_NANOX)
 DEFINES   += PRINTF_DISABLE_SUPPORT_FLOAT PRINTF_DISABLE_SUPPORT_EXPONENTIAL PRINTF_DISABLE_SUPPORT_PTRDIFF_T
 DEFINES   += PRINTF_NTOA_BUFFER_SIZE=9U PRINTF_FTOA_BUFFER_SIZE=0
+# endif
 
 # U2F
 DEFINES   += HAVE_U2F HAVE_IO_U2F
@@ -69,32 +78,35 @@ DEFINES   += U2F_PROXY_MAGIC=\"$(APPNAME)\"
 DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += BLE_SEGMENT_SIZE=32 #max MTU, min 20
 
-WEBUSB_URL = www.ledgerwallet.com
-DEFINES   += HAVE_WEBUSB WEBUSB_URL_SIZE_B=$(shell echo -n $(WEBUSB_URL) | wc -c) WEBUSB_URL=$(shell echo -n $(WEBUSB_URL) | sed -e "s/./\\\'\0\\\',/g")
+WEBUSB_URL     = www.ledgerwallet.com
+DEFINES       += HAVE_WEBUSB WEBUSB_URL_SIZE_B=$(shell echo -n $(WEBUSB_URL) | wc -c) WEBUSB_URL=$(shell echo -n $(WEBUSB_URL) | sed -e "s/./\\\'\0\\\',/g")
+
 DEFINES   += UNUSED\(x\)=\(void\)x
 DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
-ifneq ($(TARGET_NAME),TARGET_NANOX)
-DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=128
+
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+# Instead of vendor printf
+DEFINES 	  += HAVE_SPRINTF
+
+DEFINES       += IO_SEPROXYHAL_BUFFER_SIZE_B=300
+DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
+DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
+
+DEFINES       += HAVE_GLO096
+DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
+DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+DEFINES		  += HAVE_UX_FLOW
 else
-DEFINES   += IO_SEPROXYHAL_BUFFER_SIZE_B=300
-DEFINES   += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
-DEFINES   += HAVE_BLE_APDU # basic ledger apdu transport over BLE
-
-DEFINES   += HAVE_GLO096
-DEFINES   += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
-DEFINES   += HAVE_BAGL_ELLIPSIS # long label truncation feature
-DEFINES   += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-DEFINES   += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-DEFINES   += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-DEFINES   += HAVE_UX_FLOW
+DEFINES   	  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 endif
-
 
 # Enabling debug PRINTF
 DEBUG = 0
 ifneq ($(DEBUG),0)
-
         ifeq ($(TARGET_NAME),TARGET_NANOX)
                 DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
         else
@@ -102,24 +114,14 @@ ifneq ($(DEBUG),0)
         endif
 else
         DEFINES   += PRINTF\(...\)=
-        DEFINES   += BOLOS_RELEASE
 endif
 
 ##############
 #  Compiler  #
 ##############
 ifneq ($(BOLOS_ENV),)
-$(info BOLOS_ENV=$(BOLOS_ENV))
 CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
 GCCPATH := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
-else
-$(info BOLOS_ENV is not set: falling back to CLANGPATH and GCCPATH)
-endif
-ifeq ($(CLANGPATH),)
-$(info CLANGPATH is not set: clang will be used from PATH)
-endif
-ifeq ($(GCCPATH),)
-$(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
 CC       := $(CLANGPATH)clang
@@ -141,14 +143,6 @@ SDK_SOURCE_PATH  += lib_blewbxx lib_blewbxx_impl
 SDK_SOURCE_PATH  += lib_ux
 endif
 
-# If the SDK supports Flow for Nano S, build for it
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-	ifneq "$(wildcard $(BOLOS_SDK)/lib_ux/src/ux_flow_engine.c)" ""
-		SDK_SOURCE_PATH  += lib_ux
-		DEFINES                += HAVE_UX_FLOW
-	endif
-endif
-
 load: all
 	python3 -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
 
@@ -158,13 +152,6 @@ load-offline: all
 delete:
 	python3 -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
 
-release: all
-	export APP_LOAD_PARAMS_EVALUATED="$(shell printf '\\"%s\\" ' $(APP_LOAD_PARAMS))"; \
-	cat load-template.sh | envsubst > load.sh
-	chmod +x load.sh
-	tar -zcf iost-ledger-app-$(APPVERSION).tar.gz load.sh bin/app.hex
-	rm load.sh
-
 # import generic rules from the sdk
 include $(BOLOS_SDK)/Makefile.rules
 
@@ -172,7 +159,7 @@ include $(BOLOS_SDK)/Makefile.rules
 dep/%.d: %.c Makefile
 
 listvariants:
-	@echo VARIANTS COIN $(APPNAME)
+	@echo VARIANTS COIN IOST
 
 #check:
 #	@ clang-tidy \
