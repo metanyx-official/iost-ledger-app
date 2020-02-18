@@ -8,7 +8,7 @@ import subprocess
 app_dir = os.path.dirname(os.path.abspath(__file__))
 
 if len(sys.argv) == 1 \
-and os.path.basename(os.path.abspath(sys.argv[0])) == os.path.basename(os.path.abspath(__file__)) \
+and os.path.basename(os.path.abspath(sys.argv[0])) == os.path.basename(os.path.abspath(__file__)):
     for args in (["clean", "cleanpb", "proto"], []):
         subprocess.call([
             "env",
