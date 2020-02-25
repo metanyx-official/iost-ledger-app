@@ -26,7 +26,7 @@ include $(BOLOS_SDK)/Makefile.defines
 #########
 #  App  #
 #########
-APP_LOAD_PARAMS= --curve ed25519 --path "44'/48209'" --appFlags 0x240 $(COMMON_LOAD_PARAMS)
+APP_LOAD_PARAMS= --curve ed25519 --path "44'/291'" --appFlags 0x240 $(COMMON_LOAD_PARAMS)
 
 APPVERSION_M = 1
 APPVERSION_N = 0
