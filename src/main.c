@@ -5,18 +5,6 @@
 #include "utils.h"
 #include "debug.h"
 
-#define CLA 0xE0
-
-// These are the offsets of various parts of a request APDU packet.
-// INS identifies the commands.
-// P1 and P2 are parameters to the command.
-#define OFFSET_CLA 0
-#define OFFSET_INS 1
-#define OFFSET_P1 2
-#define OFFSET_P2 3
-#define OFFSET_LC 4
-#define OFFSET_CDATA 5
-
 // This is the main loop that reads and writes APDUs. It receives request
 // APDUs from the computer, looks up the corresponding command handler, and
 // calls it on the APDU payload. Then it loops around and calls io_exchange
@@ -43,56 +31,45 @@ void app_main() {
                 rx = io_exchange(CHANNEL_APDU | flags, rx);
                 flags = 0;
 
-                // no APDU received; trigger a reset
-                if (rx == 0) {
-                    THROW(EXCEPTION_IO_RESET);
-                }
+                if (rx < MIN_APDU_SIZE) {
+                    PRINTF("no APDU received\n");
+                    THROW(EXCEPTION_EMPTY_BUFFER);
+                } else if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
+                    PRINTF("malformed APDU\n");
+                    THROW(EXCEPTION_CLA_NOT_SUPPORTED);
+                } else {
+                    // APDU handler functions defined in handlers
+                    uint8_t p1 = buffer[OFFSET_P1];
+                    uint8_t p2 = buffer[OFFSET_P2];
+                    uint16_t len = buffer[OFFSET_LC];
+                    uint8_t *data = buffer + OFFSET_CDATA;
 
-                // malformed APDU
-                if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
-                    THROW(EXCEPTION_MALFORMED_APDU);
-                }
+                    if ((p1 != P1_CONFIRM) && (p1 != P1_NO_CONFIRM)) {
+                        THROW(EXCEPTION_INVALID_P1P2);
+                    } else if ((p2 != P2_DISPLAY_ADDRESS) && (p2 != P2_DISPLAY_PUBKEY)) {
+                        THROW(EXCEPTION_INVALID_P1P2);
+                    } else if (len + MIN_APDU_SIZE != size) {
+                        THROW(EXCEPTION_WRONG_LENGTH);
+                    } else {
+                        PRINTF("New APDU request:\n%.*H\n", len + 4, buffer);
+                    }
 
-                // APDU handler functions defined in handlers
-                switch (G_io_apdu_buffer[OFFSET_INS]) {
-                    case INS_GET_APP_CONFIGURATION:
-                        // handlers -> get_app_configuration
-                        handle_get_app_configuration(
-                            G_io_apdu_buffer[OFFSET_P1], 
-                            G_io_apdu_buffer[OFFSET_P2],
-                            G_io_apdu_buffer + OFFSET_CDATA, 
-                            G_io_apdu_buffer[OFFSET_LC], 
-                            &flags, 
-                            &tx
-                        );
-                        break;
-
+                    switch (buffer[OFFSET_INS]) {
                     case INS_GET_PUBLIC_KEY:
                         // handlers -> get_public_key
-                        handle_get_public_key(
-                            G_io_apdu_buffer[OFFSET_P1], 
-                            G_io_apdu_buffer[OFFSET_P2],
-                            G_io_apdu_buffer + OFFSET_CDATA, 
-                            G_io_apdu_buffer[OFFSET_LC], 
-                            &flags, 
-                            &tx
-                        );
+                        handle_get_public_key(p1, p2, data, len, flags, tx);
                         break;
-
                     case INS_SIGN_TRANSACTION:
                         // handlers -> sign_transaction
-                        handle_sign_transaction(
-                            G_io_apdu_buffer[OFFSET_P1], 
-                            G_io_apdu_buffer[OFFSET_P2],
-                            G_io_apdu_buffer + OFFSET_CDATA, 
-                            G_io_apdu_buffer[OFFSET_LC], 
-                            &flags, 
-                            &tx
-                        );
+                        handle_sign_transaction(p1, p2, data, len, flags, tx);
                         break;
-
-                    default: 
-                        THROW(EXCEPTION_UNKNOWN_INS);
+                    case INS_GET_APP_CONFIGURATION:
+                        // handlers -> get_app_configuration
+                        handle_get_app_configuration(p1, p2, data, len, flags, tx);
+                        break;
+                    default:
+                        THROW(EXCEPTION_INS_NOT_SUPPORTED);
+                    }
                 }
             }
             CATCH(EXCEPTION_IO_RESET) {
@@ -117,9 +94,7 @@ void app_main() {
                         sw = 0x6800 | (e & 0x7FF);
                         break;
                 }
-
-                G_io_apdu_buffer[tx++] = sw >> 8;
-                G_io_apdu_buffer[tx++] = sw & 0xff;
+                tx = set_error_code(G_io_apdu_buffer, tx, sw);
             }
             FINALLY {
                 // do nothing

@@ -18,11 +18,39 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 //       this.actions.add(act);
 }
 
+void derive_private_key(cx_ecfp_private_key_t *privateKey, uint32_t *bip32, uint8_t bip32Len)
+{
+    uint8_t privateKeyData[32];
+    io_seproxyhal_io_heartbeat();
+#ifdef TARGET_BLUE
+    os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip32, bip32Len, privateKeyData, NULL);
+#else
+    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32, bip32Len, privateKeyData, NULL, (unsigned char*) "ed25519 seed", 12);
+#endif
+    io_seproxyhal_io_heartbeat();
+    cx_ecfp_init_private_key(CX_CURVE_Ed25519, privateKeyData, 32, privateKey);
+    MEMCLEAR(privateKeyData);
+}
+
+void init_public_key(cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey, uint8_t *buffer)
+{
+    cx_ecfp_generate_pair(CX_CURVE_Ed25519, publicKey, privateKey, 1);
+
+    // copy public key little endian to big endian
+    uint8_t i;
+    for (i = 0; i < 32; i++) {
+        buffer[i] = publicKey->W[64 - i];
+    }
+    if ((publicKey->W[32] & 1) != 0) {
+        buffer[31] |= 0x80;
+    }
+}
+
 void iost_derive_keypair(
     uint32_t index,
-    /* out */ cx_ecfp_private_key_t* secret, 
-    /* out */ cx_ecfp_public_key_t* public
-) {
+    /* out */ cx_ecfp_private_key_t* secret_key,
+    /* out */ cx_ecfp_public_key_t* public_key)
+{
     static uint8_t seed[32];
     static uint32_t path[5];
     static cx_ecfp_private_key_t pk;
@@ -56,18 +84,18 @@ void iost_derive_keypair(
             CX_CURVE_Ed25519, 
             NULL, 
             0, 
-            public
+            public_key
         );
         cx_ecfp_generate_pair(
             CX_CURVE_Ed25519, 
-            public, 
+            public_key,
             &pk, 
             1
         );
     }
 
-    if (secret) {
-        *secret = pk;
+    if (secret_key) {
+        *secret_key = pk;
     }
 
     os_memset(seed, 0, sizeof(seed));
@@ -78,8 +106,8 @@ void iost_sign(
     uint32_t index,
     const uint8_t* tx,
     uint8_t tx_len,
-    /* out */ uint8_t* result
-) {
+    /* out */ uint8_t* result) 
+{
     static cx_ecfp_private_key_t pk;
 
     // Get Keys
@@ -108,7 +136,8 @@ void iost_sign(
 
 #define HBAR 100000000
 
-char* iost_format_tinybar(uint64_t tinybar) {
+char* iost_format_tinybar(uint64_t tinybar)
+{
     #define HBAR_BUF_SIZE 15
 
     static char buf[HBAR_BUF_SIZE];
@@ -128,3 +157,4 @@ char* iost_format_tinybar(uint64_t tinybar) {
     buf[cnt] = 0;
     return buf;
 }
+

@@ -29,8 +29,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef LEDGER_APP_IOST_PRINTF_H_
-#define LEDGER_APP_IOST_PRINTF_H_
+#ifndef LEDGER_APP_IOST_PRINTF_H
+#define LEDGER_APP_IOST_PRINTF_H
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -114,4 +114,4 @@ int iost_fctprintf(void (*out)(char character, void* arg), void* arg, const char
 #endif
 
 
-#endif  // LEDGER_APP_IOST_H_
+#endif  // LEDGER_APP_IOST_H

@@ -57,7 +57,7 @@ all: cleanpb proto default
 DEFINES += $(DEFINES_LIB)
 
 DEFINES   += OS_IO_SEPROXYHAL
-DEFINES   += HAVE_BAGL
+DEFINES   += HAVE_BAGL HAVE_SPRINTF
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
 DEFINES   += APPVERSION_M=$(APPVERSION_M) APPVERSION_N=$(APPVERSION_N) APPVERSION_P=$(APPVERSION_P)
 
@@ -105,13 +105,15 @@ endif
 # Enabling debug PRINTF
 DEBUG = 0
 ifneq ($(DEBUG),0)
-        ifeq ($(TARGET_NAME),TARGET_NANOX)
-                DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
-        else
-                DEFINES   += HAVE_PRINTF PRINTF=screen_printf
-        endif
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
 else
-        DEFINES   += PRINTF\(...\)=
+DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+endif
+DEFINES += PLINE="PRINTF(\"FILE:%s..LINE:%d\n\",__FILE__,__LINE__)"
+else
+DEFINES   += PRINTF\(...\)=
+DEFINES   += PLINE\(...\)=
 endif
 
 ##############

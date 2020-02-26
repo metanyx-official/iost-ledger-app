@@ -2,6 +2,7 @@
 #define LEDGER_APP_IOST_IOST_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 struct _Transaction;
 
@@ -14,8 +15,8 @@ struct cx_ecfp_256_private_key_s;
 
 extern void iost_derive_keypair(
     uint32_t index,
-    /* out */ struct cx_ecfp_256_private_key_s* secret, 
-    /* out */ struct cx_ecfp_256_public_key_s* public
+    /* out */ struct cx_ecfp_256_private_key_s* secret_key,
+    /* out */ struct cx_ecfp_256_public_key_s* public_key
 );
 
 extern void iost_sign(

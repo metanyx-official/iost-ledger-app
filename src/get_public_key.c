@@ -220,7 +220,6 @@ void handle_get_public_key(
         /* out */ volatile unsigned int* tx
 ) {
     UNUSED(p1);
-    UNUSED(p2);
     UNUSED(len);
     UNUSED(tx);
 

@@ -72,8 +72,7 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
                 if (channel & IO_RESET_AFTER_REPLIED) {
                     reset();
                 }
-                return 0; // nothing received from the master so far (it's a tx
-                        // transaction)
+                return 0; // nothing received from the master so far (it's a tx transaction)
             } else {
                 return io_seproxyhal_spi_recv(G_io_apdu_buffer,
                                             sizeof(G_io_apdu_buffer), 0);
@@ -85,9 +84,26 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
     return 0;
 }
 
-void io_exchange_with_code(uint16_t code, uint16_t tx) {
-    G_io_apdu_buffer[tx++] = code >> 8;
-    G_io_apdu_buffer[tx++] = code & 0xff;
-
+void io_exchange_with_code(uint16_t code, uint16_t tx)
+{
+    tx = set_error_code(G_io_apdu_buffer, tx, code);
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
 }
+
+int io_read_bip32(const uint8_t *dataBuffer, size_t size, uint32_t *bip32)
+{
+    size_t bip32Len = dataBuffer[0];
+    dataBuffer += 1;
+    if (bip32Len < 0x01 || bip32Len > MAX_BIP32_LEN) {
+        THROW(SW_WRONG_LENGTH);
+    }
+    if (1 + 4 * bip32Len > size) {
+          THROW(SW_WRONG_LENGTH);
+    }
+
+    for (unsigned int i = 0; i < bip32Len; i++) {
+        bip32[i] = (dataBuffer[0] << 24u) | (dataBuffer[1] << 16u) | (dataBuffer[2] << 8u) | (dataBuffer[3]);
+        dataBuffer += 4;
+    }
+    return bip32Len;
+ }

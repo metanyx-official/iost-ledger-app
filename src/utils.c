@@ -18,3 +18,12 @@ void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen) {
 	}
 	dst[2*inlen] = '\0';
 }
+
+uint8_t set_error_code(uint8_t *buffer, uint8_t offset, uint16_t value)
+{
+    *(buffer + offset) = (uint8_t)(value >> 8);
+    offset++;
+    *(buffer + offset) = (uint8_t)(value & 0xFF);
+    offset++;
+    return offset;
+}

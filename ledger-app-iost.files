@@ -7,8 +7,9 @@ Makefile
 iost.png
 logo.png
 x.py
-doc/Ed25519_BIP32.pdf
 doc/APDUs.md
+doc/PROTOSPEC.md
+doc/Ed25519_BIP32.pdf
 doc/iost.asc
 glyphs/boilerplate_logo.gif
 glyphs/icon_crossmark.gif

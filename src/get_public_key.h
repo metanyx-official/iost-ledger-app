@@ -1,5 +1,5 @@
-#ifndef LEDGER_HEDERA_GET_PUBLIC_KEY_H
-#define LEDGER_HEDERA_GET_PUBLIC_KEY_H 1
+#ifndef LEDGER_APP_IOST_GET_PUBLIC_KEY_H
+#define LEDGER_APP_IOST_GET_PUBLIC_KEY_H
 
 // Sizes in Characters, not Bytes
 // Used for Display Only
@@ -37,6 +37,5 @@ static unsigned int ui_get_public_key_approve_button(
 unsigned int io_seproxyhal_touch_pk_ok(const bagl_element_t *e);
 unsigned int io_seproxyhal_touch_pk_cancel(const bagl_element_t *e);
 
-#endif // TARGET
-
-#endif // LEDGER_HEDERA_GET_PUBLIC_KEY_H
+#endif // TARGET_NANOS
+#endif // LEDGER_APP_IOST_GET_PUBLIC_KEY_H
