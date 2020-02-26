@@ -54,7 +54,7 @@ void app_main() {
                         PRINTF("New APDU request:\n%.*H\n", len + 4, G_io_apdu_buffer);
                     }
 
-                    switch (buffer[OFFSET_INS]) {
+                    switch (G_io_apdu_buffer[OFFSET_INS]) {
                     case INS_GET_PUBLIC_KEY:
                         // handlers -> get_public_key
                         handle_get_public_key(p1, p2, buffer, len, flags, tx);
