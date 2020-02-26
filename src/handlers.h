@@ -16,6 +16,8 @@
 #define OFFSET_LC 4
 #define OFFSET_CDATA 5
 
+/* Although SEP-0005 only allows 3 bip32 path elements we support more */
+#define MAX_BIP32_LEN 10
 #define MIN_APDU_SIZE 5
 
 // CLA <INS> <-- Command Line Argument <Instruction>
@@ -30,9 +32,6 @@
 #define P1_MORE 0x80
 #define P2_LAST 0x00
 #define P2_MORE 0x80
-
-/* Although SEP-0005 only allows 3 bip32 path elements we support more */
-#define MAX_BIP32_LEN 10
 
 typedef void handler_fn_t(
     uint8_t p1,

@@ -39,33 +39,33 @@ void app_main() {
                     THROW(EXCEPTION_CLA_NOT_SUPPORTED);
                 } else {
                     // APDU handler functions defined in handlers
-                    uint8_t p1 = buffer[OFFSET_P1];
-                    uint8_t p2 = buffer[OFFSET_P2];
-                    uint16_t len = buffer[OFFSET_LC];
-                    uint8_t *data = buffer + OFFSET_CDATA;
+                    uint8_t p1 = G_io_apdu_buffer[OFFSET_P1];
+                    uint8_t p2 = G_io_apdu_buffer[OFFSET_P2];
+                    uint16_t len = G_io_apdu_buffer[OFFSET_LC];
+                    uint8_t *buffer = G_io_apdu_buffer + OFFSET_CDATA;
 
                     if ((p1 != P1_CONFIRM) && (p1 != P1_NO_CONFIRM)) {
                         THROW(EXCEPTION_INVALID_P1P2);
                     } else if ((p2 != P2_DISPLAY_ADDRESS) && (p2 != P2_DISPLAY_PUBKEY)) {
                         THROW(EXCEPTION_INVALID_P1P2);
-                    } else if (len + MIN_APDU_SIZE != size) {
+                    } else if (len + MIN_APDU_SIZE != rx) {
                         THROW(EXCEPTION_WRONG_LENGTH);
                     } else {
-                        PRINTF("New APDU request:\n%.*H\n", len + 4, buffer);
+                        PRINTF("New APDU request:\n%.*H\n", len + 4, G_io_apdu_buffer);
                     }
 
                     switch (buffer[OFFSET_INS]) {
                     case INS_GET_PUBLIC_KEY:
                         // handlers -> get_public_key
-                        handle_get_public_key(p1, p2, data, len, flags, tx);
+                        handle_get_public_key(p1, p2, buffer, len, flags, tx);
                         break;
                     case INS_SIGN_TRANSACTION:
                         // handlers -> sign_transaction
-                        handle_sign_transaction(p1, p2, data, len, flags, tx);
+                        handle_sign_transaction(p1, p2, buffer, len, flags, tx);
                         break;
                     case INS_GET_APP_CONFIGURATION:
                         // handlers -> get_app_configuration
-                        handle_get_app_configuration(p1, p2, data, len, flags, tx);
+                        handle_get_app_configuration(p1, p2, buffer, len, flags, tx);
                         break;
                     default:
                         THROW(EXCEPTION_INS_NOT_SUPPORTED);

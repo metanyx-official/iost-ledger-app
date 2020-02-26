@@ -267,7 +267,7 @@ void handle_transaction_body() {
         default:
             // Unsupported
             // TODO: Better exception num
-            THROW(EXCEPTION_MALFORMED_APDU);
+            THROW(EXCEPTION_CLA_NOT_SUPPORTED);
     }
 
 #if defined(TARGET_NANOS)
@@ -298,7 +298,7 @@ void handle_sign_transaction(
     
     // Oops Oof Owie
     if (ctx.raw_transaction_length > MAX_TX_SIZE) {
-        THROW(EXCEPTION_MALFORMED_APDU);
+        THROW(EXCEPTION_CLA_NOT_SUPPORTED);
     }
 
     // Extract Transaction Message
@@ -317,7 +317,7 @@ void handle_sign_transaction(
         &ctx.transaction
     )) {
         // Oh no couldn't ...
-        THROW(EXCEPTION_MALFORMED_APDU);
+        THROW(EXCEPTION_CLA_NOT_SUPPORTED);
     }
 
     handle_transaction_body();

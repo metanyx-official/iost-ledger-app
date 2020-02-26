@@ -1,4 +1,5 @@
 #include "iost.h"
+#include "globals.h"
 #include "printf.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
@@ -20,7 +21,7 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 
 void derive_private_key(cx_ecfp_private_key_t *privateKey, uint32_t *bip32, uint8_t bip32Len)
 {
-    uint8_t privateKeyData[32];
+    uint8_t privateKeyData[BIP32_SIZE];
     io_seproxyhal_io_heartbeat();
 #ifdef TARGET_BLUE
     os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip32, bip32Len, privateKeyData, NULL);
@@ -28,8 +29,8 @@ void derive_private_key(cx_ecfp_private_key_t *privateKey, uint32_t *bip32, uint
     os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32, bip32Len, privateKeyData, NULL, (unsigned char*) "ed25519 seed", 12);
 #endif
     io_seproxyhal_io_heartbeat();
-    cx_ecfp_init_private_key(CX_CURVE_Ed25519, privateKeyData, 32, privateKey);
-    MEMCLEAR(privateKeyData);
+    cx_ecfp_init_private_key(CX_CURVE_Ed25519, privateKeyData, BIP32_SIZE, privateKey);
+    memset(privateKeyData, 0 , sizeof(privateKeyData));
 }
 
 void init_public_key(cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey, uint8_t *buffer)
@@ -38,10 +39,10 @@ void init_public_key(cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *pu
 
     // copy public key little endian to big endian
     uint8_t i;
-    for (i = 0; i < 32; i++) {
+    for (i = 0; i < BIP32_SIZE; i++) {
         buffer[i] = publicKey->W[64 - i];
     }
-    if ((publicKey->W[32] & 1) != 0) {
+    if ((publicKey->W[BIP32_SIZE] & 1) != 0) {
         buffer[31] |= 0x80;
     }
 }
@@ -51,8 +52,8 @@ void iost_derive_keypair(
     /* out */ cx_ecfp_private_key_t* secret_key,
     /* out */ cx_ecfp_public_key_t* public_key)
 {
-    static uint8_t seed[32];
-    static uint32_t path[5];
+    static uint8_t seed[BIP32_SIZE];
+    static uint32_t path[BIP32_PATH];
     static cx_ecfp_private_key_t pk;
 
     path[0] = 44 | 0x80000000;
@@ -79,7 +80,7 @@ void iost_derive_keypair(
         &pk
     );
 
-    if (public) {
+    if (public_key) {
         cx_ecfp_init_public_key(
             CX_CURVE_Ed25519, 
             NULL, 

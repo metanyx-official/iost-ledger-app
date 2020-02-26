@@ -1,5 +1,6 @@
-#include <os.h>
-#include <os_io_seproxyhal.h>
+#include "io.h"
+#include "handlers.h"
+#include "errors.h"
 #include "debug.h"
 
 // Everything below this point is Ledger magic. And the magic isn't well-
@@ -94,11 +95,11 @@ int io_read_bip32(const uint8_t *dataBuffer, size_t size, uint32_t *bip32)
 {
     size_t bip32Len = dataBuffer[0];
     dataBuffer += 1;
+
     if (bip32Len < 0x01 || bip32Len > MAX_BIP32_LEN) {
-        THROW(SW_WRONG_LENGTH);
-    }
-    if (1 + 4 * bip32Len > size) {
-          THROW(SW_WRONG_LENGTH);
+        THROW(EXCEPTION_WRONG_LENGTH);
+    } else if (1 + 4 * bip32Len > size) {
+        THROW(EXCEPTION_WRONG_LENGTH);
     }
 
     for (unsigned int i = 0; i < bip32Len; i++) {
