@@ -234,8 +234,9 @@ void handle_get_public_key(
         /* out */ volatile unsigned int* flags,
         /* out */ volatile unsigned int* tx
 ) {
-//    UNUSED(p1);
-//    UNUSED(len);
+    UNUSED(p1);
+    UNUSED(p2);
+    UNUSED(len);
     UNUSED(tx);
 
     // Read Key Index

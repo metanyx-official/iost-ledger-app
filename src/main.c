@@ -43,17 +43,26 @@ void app_main() {
                     uint8_t p1 = G_io_apdu_buffer[OFFSET_P1];
                     uint8_t p2 = G_io_apdu_buffer[OFFSET_P2];
                     uint16_t len = G_io_apdu_buffer[OFFSET_LC];
-                    uint8_t *buffer = G_io_apdu_buffer + OFFSET_CDATA;
+                    uint8_t* buffer = G_io_apdu_buffer + OFFSET_CDATA;
 
-                    if ((p1 != P1_ED25519) && (p1 != P1_SECP256K1)) {
-                        THROW(EXCEPTION_INVALID_P1P2);
-                    } else if ((p2 != P2_BASE58) && (p2 != P2_BINARY)) {
-                        THROW(EXCEPTION_INVALID_P1P2);
-                    } else if (len + APDU_MIN_SIZE != rx) {
+                    if (len == 0) {
+                        PRINTF("empty BIP32 path\n");
                         THROW(EXCEPTION_WRONG_LENGTH);
-                    } else {
-                        PRINTF("New APDU request:\n%.*H\n", len + 4, G_io_apdu_buffer);
                     }
+                    if (len + APDU_MAX_SIZE != rx) {
+                        PRINTF("invalid APDU size: %d != %d\n", len + APDU_MAX_SIZE, rx);
+                        THROW(EXCEPTION_WRONG_LENGTH);
+                    }
+                    if ((p1 != P1_ED25519) && (p1 != P1_SECP256K1)) {
+                        PRINTF("%d != P1_ED25519 || %d != P1_SECP256K1\n", p1, p1);
+                        THROW(EXCEPTION_INVALID_P1P2);
+                    }
+                    if ((p2 != P2_BASE58) && (p2 != P2_BINARY)) {
+                        PRINTF("%d != P2_BASE58 || %d != P2_BINARY\n", p2, p2);
+                        THROW(EXCEPTION_INVALID_P1P2);
+                    }
+
+                    PRINTF("New APDU request:\n%.*H\n", len, G_io_apdu_buffer);
 
                     switch (G_io_apdu_buffer[OFFSET_INS]) {
                     case INS_RESET:
@@ -106,7 +115,7 @@ void app_main() {
                         sw = 0x6800 | (e & 0x7FF);
                         break;
                 }
-                tx = set_error_code(G_io_apdu_buffer, tx, sw);
+                tx = set_error_code(G_io_apdu_buffer, sw, tx);
             }
             FINALLY {
                 // do nothing

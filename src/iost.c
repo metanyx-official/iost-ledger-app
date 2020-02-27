@@ -55,19 +55,29 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 //    }
 //}
 
-int iost_derive_keypair(
-        uint32_t index,
-        cx_ecfp_private_key_t* secret_key,
-        cx_ecfp_public_key_t* public_key)
+int iost_derive_keypair(uint32_t key_index, cx_ecfp_private_key_t* secret_key, cx_ecfp_public_key_t* public_key)
 {
+    cx_ecfp_public_key_t p_k;
+    cx_ecfp_private_key_t s_k;
+    cx_ecfp_public_key_t* ppk = &p_k;
+    cx_ecfp_private_key_t* psk = &s_k;
     uint8_t private_key[BIP32_KEY_SIZE];
     uint32_t bip_32_path[BIP32_PATH_LENGTH] = {
         IOST_NET_TYPE | BIP32_PATH_MASK,
         IOST_COIN_ID | BIP32_PATH_MASK,
-        index | BIP32_PATH_MASK
+        key_index | BIP32_PATH_MASK,
+        BIP32_PATH_MASK,
+        BIP32_PATH_MASK
     };
 
+    if (secret_key) {
+        psk = secret_key;
+    }
+    if (public_key) {
+        ppk = public_key;
+    }
     io_seproxyhal_io_heartbeat();
+
 #ifdef TARGET_BLUE
     os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip_32_path, BIP32_PATH_LENGTH, privateKeyData, NULL);
 #else
@@ -76,20 +86,22 @@ int iost_derive_keypair(
 #endif
     io_seproxyhal_io_heartbeat();
 
-    if (cx_ecfp_init_private_key(CX_CURVE_Ed25519, private_key, BIP32_KEY_SIZE, secret_key) > 0) {
+    if (cx_ecfp_init_private_key(CX_CURVE_Ed25519, private_key, BIP32_KEY_SIZE, psk) > 0) {
         os_memset(private_key, 0, BIP32_KEY_SIZE);
-
         io_seproxyhal_io_heartbeat();
 
-        if (cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, public_key) > 0) {
-            return cx_ecfp_generate_pair(CX_CURVE_Ed25519, public_key, secret_key, 1);
+        if (cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, ppk) > 0) {
+            os_memset(&s_k, 0, sizeof(s_k));
+            io_seproxyhal_io_heartbeat();
+
+            return cx_ecfp_generate_pair(CX_CURVE_Ed25519, ppk, psk, 1);
         }
     }
     return -1;
 }
 
 void iost_derive_keypair_old(
-    uint32_t index,
+    uint32_t key_index,
     /* out */ cx_ecfp_private_key_t* secret_key,
     /* out */ cx_ecfp_public_key_t* public_key)
 {
@@ -99,7 +111,7 @@ void iost_derive_keypair_old(
 
     path[0] = 44 | 0x80000000;
     path[1] = 291 | 0x80000000;
-    path[2] = index | 0x80000000;
+    path[2] = key_index | 0x80000000;
     path[3] = 0x0;
     path[4] = 0x0;
 
@@ -145,7 +157,7 @@ void iost_derive_keypair_old(
 }
 
 void iost_sign(
-    uint32_t index,
+    uint32_t key_index,
     const uint8_t* tx,
     uint8_t tx_len,
     /* out */ uint8_t* result) 
@@ -153,7 +165,7 @@ void iost_sign(
     static cx_ecfp_private_key_t pk;
 
     // Get Keys
-    iost_derive_keypair(index, &pk, NULL);
+    iost_derive_keypair(key_index, &pk, NULL);
 
     // Sign Transaction
     // <cx.h> 2283
