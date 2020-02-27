@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <os.h>
 
 void public_key_to_bytes(unsigned char *dst, cx_ecfp_public_key_t *public) {
     for (int i = 0; i < 32; i++) {
@@ -26,4 +27,19 @@ uint8_t set_error_code(uint8_t *buffer, uint8_t offset, uint16_t value)
     *(buffer + offset) = (uint8_t)(value & 0xFF);
     offset++;
     return offset;
+}
+
+void callback_os_exit(unsigned int exit_code)
+{
+    os_sched_exit(exit_code);
+}
+
+const uint8_t* chars_2_bytes(const char* const chars)
+{
+    return (const uint8_t*)(chars);
+}
+
+const char* bytes_2_chars(const uint8_t* const bytes)
+{
+    return (const char*)(bytes);
 }

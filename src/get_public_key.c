@@ -1,16 +1,26 @@
+#include "handlers.h"
+#include "globals.h"
+#include "handlers.h"
+#include "utils.h"
+#include "io.h"
+#include "ui.h"
+#include "iost.h"
+#include "errors.h"
+#include "debug.h"
+#include "printf.h"
+#include <bagl.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+//#include "get_public_key.h"
 
-#include "printf.h"
-#include "globals.h"
-#include "debug.h"
-#include "errors.h"
-#include "handlers.h"
-#include "io.h"
-#include "utils.h"
-#include "ui.h"
-#include "get_public_key.h"
+// Sizes in Characters, not Bytes
+// Used for Display Only
+static const uint8_t KEY_SIZE = 64;
+static const uint8_t DISPLAY_SIZE = 12;
+//// Arbitrary IDs for Buttons
+//static const uint8_t LEFT_BTN_ID = BUTTON_LEFT;
+//static const uint8_t RIGHT_BTN_ID = BUTTON_RIGHT;
 
 static struct get_public_key_context_t {
     uint32_t key_index;
@@ -20,7 +30,7 @@ static struct get_public_key_context_t {
     char ui_approve_l1[40];
     char ui_approve_l2[40];
 
-    cx_ecfp_public_key_t public;
+    cx_ecfp_public_key_t public_key;
 
     // Public Key Compare
     uint8_t display_index;
@@ -30,10 +40,11 @@ static struct get_public_key_context_t {
 
 #if defined(TARGET_NANOS)
 
+
 static const bagl_element_t ui_get_public_key_compare[] = {
     UI_BACKGROUND(),
-    UI_ICON_LEFT(LEFT_ID, BAGL_GLYPH_ICON_LEFT),
-    UI_ICON_RIGHT(RIGHT_ID, BAGL_GLYPH_ICON_RIGHT),
+    UI_ICON_LEFT(BUTTON_LEFT, BAGL_GLYPH_ICON_LEFT),
+    UI_ICON_RIGHT(BUTTON_RIGHT, BAGL_GLYPH_ICON_RIGHT),
     // <=                  =>
     //      Compare:
     //      <partial>
@@ -91,10 +102,10 @@ static unsigned int ui_get_public_key_compare_button(
 static const bagl_element_t* ui_prepro_get_public_key_compare(
     const bagl_element_t* element
 ) {
-    if (element->component.userid == LEFT_ID 
+    if (element->component.userid == BUTTON_LEFT
         && ctx.display_index == 0)
         return NULL; // Hide Left Arrow at Left Edge
-    if (element->component.userid == RIGHT_ID 
+    if (element->component.userid == BUTTON_RIGHT
         && ctx.display_index == KEY_SIZE - DISPLAY_SIZE) 
         return NULL; // Hide Right Arrow at Right Edge
     return element;
@@ -197,30 +208,34 @@ UX_DEF(
     &ux_compare_pk_flow_4_step
 );
 
-#endif // TARGET
+#endif // TARGET_NANOX
 
-void get_pk() {
+void get_pk()
+{
     // Derive Key
-    iost_derive_keypair(ctx.key_index, NULL, &ctx.public);
+//    iost_derive_keypair(ctx.key_index, NULL, &ctx.public);
+    if (iost_derive_keypair(ctx.key_index, NULL, &ctx.public_key) != 0) {
+        THROW(EXCEPTION_INTERNAL_ERROR);
+    } else {
+        // Put Key bytes in APDU buffer
+        public_key_to_bytes(G_io_apdu_buffer, &ctx.public_key);
 
-    // Put Key bytes in APDU buffer
-    public_key_to_bytes(G_io_apdu_buffer, &ctx.public);
-
-    // Populate Key Hex String
-    bin2hex(ctx.full_key, G_io_apdu_buffer, KEY_SIZE);
-    ctx.full_key[KEY_SIZE] = '\0';
+        // Populate Key Hex String
+        bin2hex(ctx.full_key, G_io_apdu_buffer, KEY_SIZE);
+        ctx.full_key[KEY_SIZE] = '\0';
+    }
 }
 
 void handle_get_public_key(
         uint8_t p1,
         uint8_t p2,
-        uint8_t* buffer,
+        const uint8_t* const buffer,
         uint16_t len,
         /* out */ volatile unsigned int* flags,
         /* out */ volatile unsigned int* tx
 ) {
-    UNUSED(p1);
-    UNUSED(len);
+//    UNUSED(p1);
+//    UNUSED(len);
     UNUSED(tx);
 
     // Read Key Index

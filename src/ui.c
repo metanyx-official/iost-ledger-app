@@ -1,8 +1,9 @@
 #include "ui.h"
-
+#include "utils.h"
 /*
  * Defines the main menu and idle actions for the app
  */
+
 
 #if defined(TARGET_NANOS)
 ux_state_t ux;
@@ -61,7 +62,7 @@ static const ux_menu_entry_t menu_main[4] = {
 
     {
         .menu = NULL,
-        .callback = &os_sched_exit,
+        .callback = &callback_os_exit,
         .userid = 0,
         .icon = &C_icon_dashboard,
         .line1 = "Quit app",
@@ -72,6 +73,52 @@ static const ux_menu_entry_t menu_main[4] = {
 
     UX_MENU_END
 };
+
+//bagl_element_t ui_background()
+//{
+//    return ;
+//}
+
+//bagl_element_t ui_icon_left(unsigned char user_id, unsigned char icon_id)
+//{
+//    return {
+//        { BAGL_ICON, user_id, 3, 12, 7, 7, 0, 0, 0, 0xFFFFFF, 0, 0, icon_id },
+//        NULL,
+//        0,
+//        0,
+//        0,
+//        NULL,
+//        NULL,
+//        NULL
+//    };
+//}
+//bagl_element_t ui_icon_right(unsigned char user_id, unsigned char icon_id)
+//{
+//    return {
+//        { BAGL_ICON, user_id, 117, 13, 8, 6, 0, 0, 0, 0xFFFFFF, 0, 0, icon_id },
+//        NULL,
+//        0,
+//        0,
+//        0,
+//        NULL,
+//        NULL,
+//        NULL
+//    };
+//}
+//bagl_element_t ui_text(unsigned char user_id, short x, short y, unsigned short width, const char* const text)
+//{
+//    return {
+//        { BAGL_LABELINE, user_id, x, y, width, 12, 0, 0, 0, 0xFFFFFF, 0, BAGL_FONT_OPEN_SANS_REGULAR_11px | BAGL_FONT_ALIGNMENT_CENTER, 0 },
+//        text,
+//        0,
+//        0,
+//        0,
+//        NULL,
+//        NULL,
+//        NULL
+//    };
+//}
+
 #elif defined(TARGET_NANOX)
 
 ux_state_t G_ux;
@@ -112,7 +159,7 @@ UX_DEF(
     &ux_idle_flow_3_step
 );
 
-#endif // TARGET
+#endif // TARGET_NANOX
 
 void ui_idle(void) {
 #if defined(TARGET_NANOS)
@@ -122,5 +169,6 @@ void ui_idle(void) {
         ux_stack_push();
     }
     ux_flow_init(0, ux_idle_flow, NULL);
-#endif // #if TARGET_
+#endif // TARGET_NANOS
 }
+

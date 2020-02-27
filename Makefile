@@ -72,11 +72,11 @@ DEFINES   += PRINTF_NTOA_BUFFER_SIZE=9U PRINTF_FTOA_BUFFER_SIZE=0
 
 # U2F
 DEFINES   += HAVE_U2F HAVE_IO_U2F
-DEFINES   += U2F_PROXY_MAGIC=\"$(APPNAME)\"
+DEFINES   += U2F_PROXY_MAGIC=\"$(APPNAME)abrcadabr\"
 DEFINES   += USB_SEGMENT_SIZE=64
 DEFINES   += BLE_SEGMENT_SIZE=32 #max MTU, min 20
 
-WEBUSB_URL     = www.ledgerwallet.com
+WEBUSB_URL     = www.ledger.com
 DEFINES       += HAVE_WEBUSB WEBUSB_URL_SIZE_B=$(shell echo -n $(WEBUSB_URL) | wc -c) WEBUSB_URL=$(shell echo -n $(WEBUSB_URL) | sed -e "s/./\\\'\0\\\',/g")
 
 DEFINES   += UNUSED\(x\)=\(void\)x
@@ -92,7 +92,7 @@ DEFINES       += HAVE_BLE BLE_COMMAND_TIMEOUT_MS=2000
 DEFINES       += HAVE_BLE_APDU # basic ledger apdu transport over BLE
 
 DEFINES       += HAVE_GLO096
-DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
+DEFINES       += BAGL_WIDTH=128 BAGL_HEIGHT=64
 DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
 DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
@@ -103,7 +103,9 @@ DEFINES   	  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 endif
 
 # Enabling debug PRINTF
+ifneq ($(DEBUG),0)
 DEBUG = 0
+endif
 ifneq ($(DEBUG),0)
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf

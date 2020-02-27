@@ -1,10 +1,10 @@
-#include "sign_transaction.h"
+//#include "sign_transaction.h"
+#include "handlers.h"
 #include "globals.h"
 #include "utils.h"
 #include "printf.h"
 #include "debug.h"
 #include "errors.h"
-#include "handlers.h"
 #include "io.h"
 #include "ui.h"
 #include "iost.h"
@@ -41,8 +41,23 @@ static struct sign_tx_context_t {
     Transaction transaction;
 } ctx;
 
-#if defined(TARGET_NANOS)
+//#if defined(TARGET_NANOS)
 
+//unsigned int ui_tx_approve_button(
+//    unsigned int button_mask,
+//    unsigned int button_mask_counter
+//);
+
+//#elif defined(TARGET_NANOX)
+
+//unsigned int io_seproxyhal_confirm_tx_approve(const bagl_element_t *e);
+//unsigned int io_seproxyhal_confirm_tx_reject(const bagl_element_t *e);
+
+//#endif // TARGET
+
+//void handle_transaction_body();
+
+#if defined(TARGET_NANOS)
 // UI definition for Nano S
 static const bagl_element_t ui_tx_approve[] = {
     UI_BACKGROUND(),
@@ -281,7 +296,7 @@ void handle_transaction_body() {
 void handle_sign_transaction(
     uint8_t p1,
     uint8_t p2,
-    uint8_t* buffer,
+    const uint8_t* const buffer,
     uint16_t len,
     /* out */ volatile unsigned int* flags,
     /* out */ volatile unsigned int* tx

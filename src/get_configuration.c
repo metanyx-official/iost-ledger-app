@@ -1,18 +1,17 @@
+#include "handlers.h"
+#include "io.h"
+#include "errors.h"
 #include <stdint.h>
-
 #include <os.h>
 #include <os_io_seproxyhal.h>
 
-#include "errors.h"
-#include "io.h"
-
-void handle_get_app_configuration(
+void handle_get_configuration(
     uint8_t p1,
     uint8_t p2,
     const uint8_t* const buffer,
     uint16_t len,
-    /* out */ volatile const unsigned int* const flags,
-    /* out */ volatile const unsigned int* const tx
+    /* out */ volatile unsigned int* flags,
+    /* out */ volatile unsigned int* tx
 ) {
     UNUSED(p1);
     UNUSED(p2);

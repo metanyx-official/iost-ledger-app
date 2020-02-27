@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#define IOST_NET_TYPE 44
+#define IOST_COIN_ID 291
+
 struct _Transaction;
 
 void iost_transaction_add_action(struct _Transaction *tx, const char *contract, const char *abi, const void *data);
@@ -13,7 +16,7 @@ void iost_transaction_add_action(struct _Transaction *tx, const char *contract, 
 struct cx_ecfp_256_public_key_s;
 struct cx_ecfp_256_private_key_s;
 
-extern void iost_derive_keypair(
+extern int iost_derive_keypair(
     uint32_t index,
     /* out */ struct cx_ecfp_256_private_key_s* secret_key,
     /* out */ struct cx_ecfp_256_public_key_s* public_key

@@ -1,7 +1,9 @@
 #include "io.h"
+#include "globals.h"
 #include "handlers.h"
 #include "errors.h"
 #include "debug.h"
+#include "utils.h"
 
 // Everything below this point is Ledger magic. And the magic isn't well-
 // documented, so if you want to understand it, you'll need to read the
@@ -96,7 +98,7 @@ int io_read_bip32(const uint8_t *dataBuffer, size_t size, uint32_t *bip32)
     size_t bip32Len = dataBuffer[0];
     dataBuffer += 1;
 
-    if (bip32Len < 0x01 || bip32Len > MAX_BIP32_LEN) {
+    if (bip32Len < 0x01 || bip32Len > APDU_MAX_SIZE) {
         THROW(EXCEPTION_WRONG_LENGTH);
     } else if (1 + 4 * bip32Len > size) {
         THROW(EXCEPTION_WRONG_LENGTH);

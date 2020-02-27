@@ -1,11 +1,11 @@
 #include "iost.h"
 #include "globals.h"
+#include "io.h"
 #include "printf.h"
 #include "pb_decode.h"
 #include "pb_encode.h"
 #include "pb_common.h"
 #include "IOST_api.pb.h"
-#include <os.h>
 
 
 void iost_transaction_add_action(struct _Transaction* tx, const char* contract, const char* abi, const void* data)
@@ -19,54 +19,95 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 //       this.actions.add(act);
 }
 
-void derive_private_key(cx_ecfp_private_key_t *privateKey, uint32_t *bip32, uint8_t bip32Len)
+
+//static int init_public_key(cx_ecfp_private_key_t* private_key, cx_ecfp_public_key_t* public_key)
+//{
+//    int result = cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, public_key);
+//    if (result > 0) {
+//        result = cx_ecfp_generate_pair(CX_CURVE_Ed25519, public_key, private_key, 1);
+//    } else {
+//        result = -1;
+//    }
+//    return result;
+    // copy public key little endian to big endian
+//    uint8_t i;
+//    for (i = 0; i < BIP32_KEY_LEN; i++) {
+//        buffer[i] = publicKey->W[64 - i];
+//    }
+//    if ((publicKey->W[BIP32_KEY_LEN] & 1) != 0) {
+//        buffer[31] |= 0x80;
+//    }
+//}
+
+//void iost_get_keypair(uint8_t p1, uint8_t p2, uint8_t *dataBuffer, uint16_t dataLength, uint8_t *keyBuffer)
+//{
+//    cx_ecfp_public_key_t publicKey;
+//    cx_ecfp_private_key_t privateKey;
+//    uint32_t bip32[BIP32_MAX_LEN];
+//    int bip32Len = io_read_bip32(dataBuffer, dataLength, bip32);
+
+//    dataBuffer += 1 + bip32Len * 4;
+//    dataLength -= 1 + bip32Len * 4;
+
+//    if (derive_private_key(&privateKey, bip32, bip32Len) == BIP32_KEY_SIZE) {
+//        init_public_key(&privateKey, &publicKey, keyBuffer);
+//        os_memset(&privateKey, 0, sizeof(cx_ecfp_private_key_t));
+//    }
+//}
+
+int iost_derive_keypair(
+        uint32_t index,
+        cx_ecfp_private_key_t* secret_key,
+        cx_ecfp_public_key_t* public_key)
 {
-    uint8_t privateKeyData[BIP32_SIZE];
+    uint8_t private_key[BIP32_KEY_SIZE];
+    uint32_t bip_32_path[BIP32_PATH_LENGTH] = {
+        IOST_NET_TYPE | BIP32_PATH_MASK,
+        IOST_COIN_ID | BIP32_PATH_MASK,
+        index | BIP32_PATH_MASK
+    };
+
     io_seproxyhal_io_heartbeat();
 #ifdef TARGET_BLUE
-    os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip32, bip32Len, privateKeyData, NULL);
+    os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip_32_path, BIP32_PATH_LENGTH, privateKeyData, NULL);
 #else
-    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip32, bip32Len, privateKeyData, NULL, (unsigned char*) "ed25519 seed", 12);
+//    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip_32_path, BIP32_PATH_LENGTH, privateKeyData, NULL, (unsigned char*) "ed25519 seed", 12);
+    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip_32_path, BIP32_PATH_LENGTH, private_key, NULL, NULL, 0);
 #endif
     io_seproxyhal_io_heartbeat();
-    cx_ecfp_init_private_key(CX_CURVE_Ed25519, privateKeyData, BIP32_SIZE, privateKey);
-    memset(privateKeyData, 0 , sizeof(privateKeyData));
+
+    if (cx_ecfp_init_private_key(CX_CURVE_Ed25519, private_key, BIP32_KEY_SIZE, secret_key) > 0) {
+        os_memset(private_key, 0, BIP32_KEY_SIZE);
+
+        io_seproxyhal_io_heartbeat();
+
+        if (cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, public_key) > 0) {
+            return cx_ecfp_generate_pair(CX_CURVE_Ed25519, public_key, secret_key, 1);
+        }
+    }
+    return -1;
 }
 
-void init_public_key(cx_ecfp_private_key_t *privateKey, cx_ecfp_public_key_t *publicKey, uint8_t *buffer)
-{
-    cx_ecfp_generate_pair(CX_CURVE_Ed25519, publicKey, privateKey, 1);
-
-    // copy public key little endian to big endian
-    uint8_t i;
-    for (i = 0; i < BIP32_SIZE; i++) {
-        buffer[i] = publicKey->W[64 - i];
-    }
-    if ((publicKey->W[BIP32_SIZE] & 1) != 0) {
-        buffer[31] |= 0x80;
-    }
-}
-
-void iost_derive_keypair(
+void iost_derive_keypair_old(
     uint32_t index,
     /* out */ cx_ecfp_private_key_t* secret_key,
     /* out */ cx_ecfp_public_key_t* public_key)
 {
-    static uint8_t seed[BIP32_SIZE];
-    static uint32_t path[BIP32_PATH];
+    static uint8_t seed[BIP32_KEY_SIZE];
+    static uint32_t path[BIP32_PATH_LENGTH + 2];
     static cx_ecfp_private_key_t pk;
 
     path[0] = 44 | 0x80000000;
-    path[1] = 3030 | 0x80000000;
+    path[1] = 291 | 0x80000000;
     path[2] = index | 0x80000000;
-    path[3] = 0x80000000;
-    path[4] = 0x80000000;
+    path[3] = 0x0;
+    path[4] = 0x0;
 
     os_perso_derive_node_bip32_seed_key(
         HDW_ED25519_SLIP10, 
         CX_CURVE_Ed25519, 
         path, 
-        5, 
+        BIP32_PATH_LENGTH + 2,
         seed, 
         NULL, 
         NULL, 

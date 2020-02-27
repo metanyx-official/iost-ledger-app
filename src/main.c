@@ -1,3 +1,4 @@
+#include "globals.h"
 #include "errors.h"
 #include "handlers.h"
 #include "ui.h"
@@ -31,7 +32,7 @@ void app_main() {
                 rx = io_exchange(CHANNEL_APDU | flags, rx);
                 flags = 0;
 
-                if (rx < MIN_APDU_SIZE) {
+                if (rx < APDU_MIN_SIZE) {
                     PRINTF("no APDU received\n");
                     THROW(EXCEPTION_EMPTY_BUFFER);
                 } else if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
@@ -44,31 +45,42 @@ void app_main() {
                     uint16_t len = G_io_apdu_buffer[OFFSET_LC];
                     uint8_t *buffer = G_io_apdu_buffer + OFFSET_CDATA;
 
-                    if ((p1 != P1_CONFIRM) && (p1 != P1_NO_CONFIRM)) {
+                    if ((p1 != P1_ED25519) && (p1 != P1_SECP256K1)) {
                         THROW(EXCEPTION_INVALID_P1P2);
-                    } else if ((p2 != P2_DISPLAY_ADDRESS) && (p2 != P2_DISPLAY_PUBKEY)) {
+                    } else if ((p2 != P2_BASE58) && (p2 != P2_BINARY)) {
                         THROW(EXCEPTION_INVALID_P1P2);
-                    } else if (len + MIN_APDU_SIZE != rx) {
+                    } else if (len + APDU_MIN_SIZE != rx) {
                         THROW(EXCEPTION_WRONG_LENGTH);
                     } else {
                         PRINTF("New APDU request:\n%.*H\n", len + 4, G_io_apdu_buffer);
                     }
 
                     switch (G_io_apdu_buffer[OFFSET_INS]) {
+                    case INS_RESET:
+                        flags |= IO_RESET_AFTER_REPLIED;
+                        THROW(EXCEPTION_OK);
+                        break;
+                    case INS_ECHO:
+                        tx = rx;
+                        THROW(EXCEPTION_OK);
+                        break;
+                    case INS_GET_CONFIGURATION:
+                        // handlers -> get_app_configuration
+                        handle_get_configuration(p1, p2, buffer, len, &flags, &tx);
+                        break;
                     case INS_GET_PUBLIC_KEY:
                         // handlers -> get_public_key
-                        handle_get_public_key(p1, p2, buffer, len, flags, tx);
+                        handle_get_public_key(p1, p2, buffer, len, &flags, &tx);
                         break;
                     case INS_SIGN_TRANSACTION:
                         // handlers -> sign_transaction
-                        handle_sign_transaction(p1, p2, buffer, len, flags, tx);
+                        handle_sign_transaction(p1, p2, buffer, len, &flags, &tx);
                         break;
-                    case INS_GET_APP_CONFIGURATION:
-                        // handlers -> get_app_configuration
-                        handle_get_app_configuration(p1, p2, buffer, len, flags, tx);
-                        break;
+                    case INS_RETURN_TO_DASHBOARD:
+                        goto return_to_dashboard;
                     default:
                         THROW(EXCEPTION_INS_NOT_SUPPORTED);
+                        break;
                     }
                 }
             }
@@ -102,6 +114,9 @@ void app_main() {
         }
         END_TRY;
     }
+
+return_to_dashboard:
+    return;
 }
 
 void app_exit(void) {

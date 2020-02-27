@@ -1,20 +1,20 @@
-#ifndef LEDGER_APP_IOST_SIGN_TRANSACTION_H
-#define LEDGER_APP_IOST_SIGN_TRANSACTION_H
+//#ifndef LEDGER_APP_IOST_SIGN_TRANSACTION_H
+//#define LEDGER_APP_IOST_SIGN_TRANSACTION_H
 
-#if defined(TARGET_NANOS)
+//#if defined(TARGET_NANOS)
 
-unsigned int ui_tx_approve_button(
-    unsigned int button_mask,
-    unsigned int button_mask_counter
-);
+//unsigned int ui_tx_approve_button(
+//    unsigned int button_mask,
+//    unsigned int button_mask_counter
+//);
 
-#elif defined(TARGET_NANOX)
+//#elif defined(TARGET_NANOX)
 
-unsigned int io_seproxyhal_confirm_tx_approve(const bagl_element_t *e);
-unsigned int io_seproxyhal_confirm_tx_reject(const bagl_element_t *e);
+//unsigned int io_seproxyhal_confirm_tx_approve(const bagl_element_t *e);
+//unsigned int io_seproxyhal_confirm_tx_reject(const bagl_element_t *e);
 
-#endif // TARGET
+//#endif // TARGET
 
-void handle_transaction_body();
+//void handle_transaction_body();
 
-#endif //LEDGER_APP_IOST_SIGN_TRANSACTION_H
+//#endif //LEDGER_APP_IOST_SIGN_TRANSACTION_H

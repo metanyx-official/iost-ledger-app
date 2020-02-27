@@ -33,7 +33,7 @@ glyphs/icon_certificate.gif
 src/debug.c
 src/debug.h
 src/errors.h
-src/get_app_configuration.c
+src/get_configuration.c
 src/get_public_key.c
 src/get_public_key.h
 src/globals.h
