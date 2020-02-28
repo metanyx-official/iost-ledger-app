@@ -16,11 +16,13 @@
 
 // Sizes in Characters, not Bytes
 // Used for Display Only
-static const uint8_t KEY_SIZE = 64;
-static const uint8_t DISPLAY_SIZE = 12;
-//// Arbitrary IDs for Buttons
-//static const uint8_t LEFT_BTN_ID = BUTTON_LEFT;
-//static const uint8_t RIGHT_BTN_ID = BUTTON_RIGHT;
+static const uint8_t KEY_SIZE = BIP32_KEY_SIZE * 2;
+static const uint8_t DISPLAY_SIZE = 18; // characters @ 11pt sys font
+// User IDs for BAGL Elements
+static const uint8_t LEFT_ICON_ID = 0x01;
+static const uint8_t RIGHT_ICON_ID = 0x02;
+static const uint8_t LINE_1_ID = 0x05;
+static const uint8_t LINE_2_ID = 0x06;
 
 static struct get_public_key_context_t {
 //    uint32_t key_index;
@@ -29,8 +31,7 @@ static struct get_public_key_context_t {
 
     // Lines on the UI Screen
     // L1 Only used for title in Nano X compare
-    char ui_approve_l1[40];
-    char ui_approve_l2[40];
+    char ui_approve_l2[DISPLAY_SIZE + 1];
 
     cx_ecfp_public_key_t public_key;
 
@@ -42,29 +43,28 @@ static struct get_public_key_context_t {
 
 #if defined(TARGET_NANOS)
 
-
 static const bagl_element_t ui_get_public_key_compare[] = {
     UI_BACKGROUND(),
-    UI_ICON_LEFT(BUTTON_LEFT, BAGL_GLYPH_ICON_LEFT),
-    UI_ICON_RIGHT(BUTTON_RIGHT, BAGL_GLYPH_ICON_RIGHT),
+    UI_ICON_LEFT(LEFT_ICON_ID, BAGL_GLYPH_ICON_LEFT),
+    UI_ICON_RIGHT(RIGHT_ICON_ID, BAGL_GLYPH_ICON_RIGHT),
     // <=                  =>
-    //      Compare:
+    //       Public Key
     //      <partial>
     //
-    UI_TEXT(0x00, 0, 12, 128, "Public Key"),
-    UI_TEXT(0x00, 0, 26, 128, ctx.partial_key)
+    UI_TEXT(LINE_1_ID, 0, 12, 128, "Public Key"),
+    UI_TEXT(LINE_2_ID, 0, 26, 128, ctx.partial_key)
 };
 
 static const bagl_element_t ui_get_public_key_approve[] = {
     UI_BACKGROUND(),
-    UI_ICON_LEFT(0x00, BAGL_GLYPH_ICON_CROSS),
-    UI_ICON_RIGHT(0x00, BAGL_GLYPH_ICON_CHECK),
+    UI_ICON_LEFT(LEFT_ICON_ID, BAGL_GLYPH_ICON_CROSS),
+    UI_ICON_RIGHT(RIGHT_ICON_ID, BAGL_GLYPH_ICON_CHECK),
     //
     //    Export Public
     //       Key #123?
     //
-    UI_TEXT(0x00, 0, 12, 128, "Export Public"),
-    UI_TEXT(0x00, 0, 26, 128, ctx.ui_approve_l2),
+    UI_TEXT(LINE_1_ID, 0, 12, 128, "Export Public"),
+    UI_TEXT(LINE_2_ID, 0, 26, 128, ctx.ui_approve_l2),
 };
 
 void shift_partial_key() {
@@ -94,7 +94,6 @@ static unsigned int ui_get_public_key_compare_button(
             UX_REDISPLAY();
             break;
         case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
-            io_exchange_with_code(EXCEPTION_OK, 32);
             ui_idle();
             break;
     }
@@ -104,10 +103,10 @@ static unsigned int ui_get_public_key_compare_button(
 static const bagl_element_t* ui_prepro_get_public_key_compare(
     const bagl_element_t* element
 ) {
-    if (element->component.userid == BUTTON_LEFT
+    if (element->component.userid == LEFT_ICON_ID
         && ctx.display_index == 0)
         return NULL; // Hide Left Arrow at Left Edge
-    if (element->component.userid == BUTTON_RIGHT
+    if (element->component.userid == RIGHT_ICON_ID
         && ctx.display_index == KEY_SIZE - DISPLAY_SIZE) 
         return NULL; // Hide Right Arrow at Right Edge
     return element;
@@ -140,6 +139,7 @@ static unsigned int ui_get_public_key_approve_button(
             break;
 
         case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
+            io_exchange_with_code(EXCEPTION_OK, 32);
             compare_pk();
             break;
 
@@ -151,10 +151,9 @@ static unsigned int ui_get_public_key_approve_button(
 }
 
 #elif defined(TARGET_NANOX)
-
 unsigned int io_seproxyhal_touch_pk_ok(const bagl_element_t *e) {
     io_exchange_with_code(EXCEPTION_OK, 32);
-    ui_idle();
+    compare_pk();
     return 0;
 }
 
@@ -165,7 +164,7 @@ unsigned int io_seproxyhal_touch_pk_cancel(const bagl_element_t *e) {
 }
 
 UX_STEP_NOCB(
-    ux_compare_pk_flow_1_step,
+    ux_approve_pk_flow_1_step,
     bn,
     {
         "Export Public",
@@ -173,17 +172,8 @@ UX_STEP_NOCB(
     }
 );
 
-UX_STEP_NOCB(
-    ux_compare_pk_flow_2_step,
-    bnnn_paging,
-    {
-        .title = ctx.ui_approve_l1,
-        .text = (char*) ctx.full_key
-    }
-);
-
 UX_STEP_VALID(
-    ux_compare_pk_flow_3_step,
+    ux_approve_pk_flow_2_step,
     pb,
     io_seproxyhal_touch_pk_ok(NULL),
     {
@@ -193,7 +183,7 @@ UX_STEP_VALID(
 );
 
 UX_STEP_VALID(
-    ux_compare_pk_flow_4_step,
+    ux_approve_pk_flow_3_step,
     pb,
     io_seproxyhal_touch_pk_cancel(NULL),
     {
@@ -202,13 +192,31 @@ UX_STEP_VALID(
     }
 );
 
+UX_STEP_CB(
+    ux_compare_pk_flow_1_step,
+    bnnn_paging,
+    ui_idle(),
+    {
+        .title = "Public Key",
+        .text = (char*) ctx.full_key
+    }
+);
+
+UX_DEF(
+    ux_approve_pk_flow,
+    &ux_approve_pk_flow_1_step,
+    &ux_approve_pk_flow_2_step,
+    &ux_approve_pk_flow_3_step
+);
+
 UX_DEF(
     ux_compare_pk_flow,
-    &ux_compare_pk_flow_1_step,
-    &ux_compare_pk_flow_2_step,
-    &ux_compare_pk_flow_3_step,
-    &ux_compare_pk_flow_4_step
+    &ux_compare_pk_flow_1_step
 );
+
+void compare_pk() {
+    ux_flow_init(0, ux_compare_pk_flow, NULL);
+}
 
 #endif // TARGET_NANOX
 
@@ -242,16 +250,11 @@ void handle_get_public_key(
     UNUSED(p2);
     UNUSED(tx);
 
-    // Read BIP32 path
+    // Read Key Index
     ctx.bip_32_length = io_read_bip32(buffer, size, ctx.bip_32_path);
-//    ctx.key_index = bip_32_path[bip_32_length - 1];
-    // ctx.key_index = U4LE(buffer, 0);
-
-    // Title for Nano X compare screen
-    iost_snprintf(ctx.ui_approve_l1, 40, "Public Key #%u", ctx.bip_32_path[ctx.bip_32_length - 1]);
 
     // Complete "Export Public | Key #x?"
-    iost_snprintf(ctx.ui_approve_l2, 40, "Key #%u?", ctx.bip_32_path[ctx.bip_32_length - 1]);
+    iost_snprintf(ctx.ui_approve_l2, DISPLAY_SIZE, "Key #%u?", ctx.bip_32_path[ctx.bip_32_length - 1] - BIP32_PATH_MASK);
 
     // Populate context with PK
     get_pk();
@@ -262,9 +265,38 @@ void handle_get_public_key(
 
 #elif defined(TARGET_NANOX)
 
-    ux_flow_init(0, ux_compare_pk_flow, NULL);
+    ux_flow_init(0, ux_approve_pk_flow, NULL);
 
 #endif // TARGET
 
     *flags |= IO_ASYNCH_REPLY;
 }
+
+
+//UNUSED(tx);
+
+//// Read BIP32 path
+//ctx.bip_32_length = io_read_bip32(buffer, size, ctx.bip_32_path);
+////    ctx.key_index = bip_32_path[bip_32_length - 1];
+//// ctx.key_index = U4LE(buffer, 0);
+
+//// Title for Nano X compare screen
+//iost_snprintf(ctx.ui_approve_l1, 40, "Public Key #%u", ctx.bip_32_path[ctx.bip_32_length - 1]);
+
+//// Complete "Export Public | Key #x?"
+//iost_snprintf(ctx.ui_approve_l2, 40, "Key #%u?", ctx.bip_32_path[ctx.bip_32_length - 1]);
+
+//// Populate context with PK
+//get_pk();
+
+//#if defined(TARGET_NANOS)
+
+//UX_DISPLAY(ui_get_public_key_approve, NULL);
+
+//#elif defined(TARGET_NANOX)
+
+//ux_flow_init(0, ux_compare_pk_flow, NULL);
+
+//#endif // TARGET
+
+//*flags |= IO_ASYNCH_REPLY;
