@@ -11,9 +11,6 @@
 #include <cx.h>
 
 #define HBAR 100000000
-#define HBAR_BUF_SIZE 15
-
-static char tinybar_buf[HBAR_BUF_SIZE];
 
 void iost_transaction_add_action(struct _Transaction* tx, const char* contract, const char* abi, const void* data)
 {
@@ -68,6 +65,7 @@ int iost_derive_keypair(
     cx_ecfp_256_private_key_t* secret_key,
     cx_ecfp_256_public_key_t* public_key
 ) {
+    int result = -1;
     cx_ecfp_public_key_t p_k;
     cx_ecfp_private_key_t s_k;
     cx_ecfp_public_key_t* ppk = &p_k;
@@ -87,28 +85,33 @@ int iost_derive_keypair(
     if (public_key) {
         ppk = public_key;
     }
+    PRINTF("Get key private %p and public %p\n", secret_key, public_key);
     io_seproxyhal_io_heartbeat();
 
 #ifdef TARGET_BLUE
-    os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip_32_path, bip_32_length, privateKeyData, NULL);
+    os_perso_derive_node_bip32(CX_CURVE_Ed25519, bip_32_path, bip_32_length, private_key, NULL);
 #else
 //    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip_32_path, bip_32_length, privateKeyData, NULL, (unsigned char*) "ed25519 seed", 12);
     os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip_32_path, bip_32_length, private_key, NULL, NULL, 0);
 #endif
+    PRINTF("Private key derived: %.*H\n", BIP32_KEY_SIZE, private_key);
     io_seproxyhal_io_heartbeat();
 
     if (cx_ecfp_init_private_key(CX_CURVE_Ed25519, private_key, BIP32_KEY_SIZE, psk) > 0) {
-        os_memset(private_key, 0, BIP32_KEY_SIZE);
-        io_seproxyhal_io_heartbeat();
+        if (cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, ppk) == 0) {
+            result = cx_ecfp_generate_pair(CX_CURVE_Ed25519, ppk, psk, 1);
 
-        if (cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, ppk) > 0) {
-            os_memset(&s_k, 0, sizeof(s_k));
+            os_memset(private_key, 0, BIP32_KEY_SIZE);
+            if (secret_key == NULL) {
+                os_memset(&s_k, 0, sizeof(s_k));
+            }
+            if (public_key == NULL) {
+                os_memset(&p_k, 0, sizeof(p_k));
+            }
             io_seproxyhal_io_heartbeat();
-
-            return cx_ecfp_generate_pair(CX_CURVE_Ed25519, ppk, psk, 1);
         }
     }
-    return -1;
+    return result;
 }
 
 void iost_derive_keypair_old(
@@ -213,22 +216,25 @@ void public_key_to_bytes(
 }
 
 
-const char* iost_format_tinybar(const uint64_t tinybar)
-{
-    uint64_t hbar;
-    uint64_t hbar_f;
-    int cnt;
+//const char* iost_format_tinybar(const uint64_t tinybar)
+//{
+//    static char hbar_buf[15];
+//    static int hbar_buf_size = (int) sizeof(hbar_buf);
 
-    hbar = (tinybar / HBAR);
-    hbar_f = (tinybar % HBAR * 10000 / HBAR);
+//    int cnt;
+//    uint64_t hbar;
+//    uint64_t hbar_f;
 
-    cnt = iost_snprintf(tinybar_buf, HBAR_BUF_SIZE, "%llu", hbar);
+//    hbar = (hbar_buf / HBAR);
+//    hbar_f = (hbar_buf % HBAR * 10000 / HBAR);
 
-    if (hbar_f != 0) {
-        cnt += iost_snprintf(tinybar_buf+ cnt, HBAR_BUF_SIZE - cnt, ".%.4llu", hbar_f);
-    }
+//    cnt = iost_snprintf(hbar_buf, hbar_buf_size, "%llu", hbar);
 
-    tinybar_buf[cnt] = 0;
-    return tinybar_buf;
-}
+//    if (hbar_f != 0) {
+//        cnt += iost_snprintf(hbar_buf+ cnt, hbar_buf_size - cnt, ".%.4llu", hbar_f);
+//    }
+
+//    hbar_buf[cnt] = 0;
+//    return hbar_buf;
+//}
 

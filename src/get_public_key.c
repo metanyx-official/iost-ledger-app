@@ -220,6 +220,8 @@ void get_pk()
         THROW(EXCEPTION_INTERNAL_ERROR);
     }
 
+    PRINTF("Public key generated %.*H\n", sizeof(cx_ecfp_public_key_t), ctx.public_key);
+
     // Put Key bytes in APDU buffer
     public_key_to_bytes(&ctx.public_key, G_io_apdu_buffer);
 

@@ -103,21 +103,20 @@ DEFINES   	  += IO_SEPROXYHAL_BUFFER_SIZE_B=128
 endif
 
 # Enabling debug PRINTF
-ifneq ($(DEBUG),1)
-ifneq ($(DEBUG),0)
+ifeq ($(DEBUG),)
 DEBUG = 0
 endif
-endif
-ifneq ($(DEBUG),0)
+
+ifeq ($(DEBUG),0)
+DEFINES += PRINTF\(...\)=
+DEFINES += PLINE\(...\)=
+else
 ifeq ($(TARGET_NAME),TARGET_NANOX)
 DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
 else
 DEFINES   += HAVE_PRINTF PRINTF=screen_printf
 endif
 DEFINES += PLINE="PRINTF(\"FILE:%s..LINE:%d\n\",__FILE__,__LINE__)"
-else
-DEFINES   += PRINTF\(...\)=
-DEFINES   += PLINE\(...\)=
 endif
 
 ##############

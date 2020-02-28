@@ -35,6 +35,6 @@ extern void public_key_to_bytes(
     /* out */ uint8_t* dst
 );
 
-extern const char* iost_format_tinybar(const uint64_t tinybar);
+//extern const char* iost_format_tinybar(const uint64_t tinybar);
 
 #endif // LEDGER_APP_IOST_IOST_H
