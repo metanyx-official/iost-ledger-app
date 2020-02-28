@@ -5,13 +5,13 @@
 //#include <bagl.h>
 //#include "globals.h"
 
+struct bagl_element_s;
+
 #if defined(TARGET_NANOS)
 #define UI_BAGLE_ELEMENT(text) (const char* const)(text)
 #elif defined(TARGET_NANOX)
-#include "ux.h"
 #define UI_BAGLE_ELEMENT(text) (const char* const)(text)
 #elif defined(TARGET_BLUE)
-#include "ux.h"
 #define UI_BAGLE_ELEMENT(text) (const char* const)(text),0,0,0,NULL,NULL,NULL
 #endif // TARGET_NANOX
 
@@ -26,7 +26,7 @@
 //extern bagl_element_t ui_icon_right(unsigned char user_id, unsigned char icon_id);
 //extern bagl_element_t ui_text(unsigned char userid, short x, short y, unsigned short width, const char* const text);
 
-
 extern void ui_idle(void);
+extern void seproxyhal_display(const struct bagl_element_s* element);
 
 #endif // LEDGER_APP_IOST_UI_H

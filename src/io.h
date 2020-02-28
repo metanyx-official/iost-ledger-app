@@ -1,8 +1,6 @@
 #ifndef LEDGER_APP_IOST_IO_H
 #define LEDGER_APP_IOST_IO_H
 
-#include <os.h>
-#include <os_io_seproxyhal.h>
 #include <stdint.h>
 
 /* Although SEP-0005 only allows 3 bip32 path elements we support more */
@@ -15,6 +13,6 @@
 #define MAX_TX_SIZE 512
 
 extern void io_exchange_with_code(uint16_t code, uint16_t tx);
-extern int io_read_bip32(const uint8_t *dataBuffer, size_t size, uint32_t *bip32);
+extern uint8_t io_read_bip32(const uint8_t *buffer, uint16_t size, uint32_t *bip32);
 
 #endif // LEDGER_APP_IOST_IO_H

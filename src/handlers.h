@@ -8,7 +8,7 @@ typedef void handler_fn_t(
     uint8_t p1,
     uint8_t p2,
     const uint8_t* const buffer,
-    uint16_t len,
+    uint16_t size,
     /* out */ volatile unsigned int* flags,
     /* out */ volatile unsigned int* tx
 );

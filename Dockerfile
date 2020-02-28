@@ -1,3 +1,6 @@
+# Run with shell command
+# export APP_NAME=ledger-app-iost && docker build -t $APP_NAME . && docker run -it -p 4444:4444 -p 55555:55555 -v /dev:/dev --privileged --rm --name $APP_NAME  $APP_NAME 
+
 FROM ubuntu:18.04
 ENV ADPU_PORT 4444
 ENV VNC_PORT 55555
@@ -24,7 +27,7 @@ RUN apt-get -y install \
 #g++-multilib-arm-linux-gnueabihf gcc-multilib-arm-linux-gnueabi g++-8-multilib-arm-linux-gnueabi
 #gcc-multilib g++-multilib \
 # create limited user
-RUN adduser --quiet --disabled-password bob
+RUN adduser --disabled-password --gecos "" bob
 USER bob
 WORKDIR /home/bob
 

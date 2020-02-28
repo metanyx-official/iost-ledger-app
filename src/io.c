@@ -4,6 +4,8 @@
 #include "errors.h"
 #include "debug.h"
 #include "utils.h"
+#include <os.h>
+#include <os_io_seproxyhal.h>
 
 // Everything below this point is Ledger magic. And the magic isn't well-
 // documented, so if you want to understand it, you'll need to read the
@@ -12,11 +14,9 @@
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-void io_seproxyhal_display(const bagl_element_t *element) {
-    io_seproxyhal_display_default((bagl_element_t*)element);
-}
 
-unsigned char io_event(unsigned char channel) {
+unsigned char io_event(unsigned char channel)
+{
     UNUSED(channel);
 
     // Ledger docs recommend checking the canary on each io_event
@@ -93,20 +93,26 @@ void io_exchange_with_code(uint16_t code, uint16_t tx)
     io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
 }
 
-int io_read_bip32(const uint8_t *dataBuffer, size_t size, uint32_t *bip32)
+uint8_t io_read_bip32(const uint8_t* buffer, uint16_t size, uint32_t* bip_32)
 {
-    size_t bip32Len = dataBuffer[0];
-    dataBuffer += 1;
+    uint8_t length = buffer[0];
+    buffer += 1;
 
-    if (bip32Len < 0x01 || bip32Len > APDU_MAX_SIZE) {
-        THROW(EXCEPTION_WRONG_LENGTH);
-    } else if (1 + 4 * bip32Len > size) {
+    if (
+        (length < 0x01 || length > APDU_MAX_SIZE) || 
+        (1 + 4 * length > size)
+    ) {
+        PRINTF("invalid BIP32 length: %u\n", length);
         THROW(EXCEPTION_WRONG_LENGTH);
     }
 
-    for (unsigned int i = 0; i < bip32Len; i++) {
-        bip32[i] = (dataBuffer[0] << 24u) | (dataBuffer[1] << 16u) | (dataBuffer[2] << 8u) | (dataBuffer[3]);
-        dataBuffer += 4;
+    for (unsigned int i = 0; i < length; i++) {
+        bip_32[i] = 
+            (buffer[0] << 24u) |
+            (buffer[1] << 16u) |
+            (buffer[2] << 8u) |
+            (buffer[3]);
+        buffer += 4;
     }
-    return bip32Len;
+    return length;
  }

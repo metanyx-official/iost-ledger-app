@@ -16,7 +16,9 @@
 
 static struct sign_tx_context_t {
     // ui common
-    uint32_t key_index;
+//    uint32_t key_index;
+    int bip_32_length;
+    uint32_t bip_32_path[BIP32_PATH_LENGTH];
 
     // temp variables
     uint8_t transfer_to_index;
@@ -92,7 +94,8 @@ unsigned int ui_tx_approve_button(
             if (ctx.do_sign) {
                 // Step 2
                 iost_sign(
-                    ctx.key_index, 
+                    ctx.bip_32_path,
+                    ctx.bip_32_length,
                     ctx.raw_transaction, 
                     ctx.raw_transaction_length, 
                     G_io_apdu_buffer
@@ -114,7 +117,7 @@ unsigned int ui_tx_approve_button(
                     iost_snprintf(ctx.ui_tx_approve_l1, 40, "Sign Transaction");
                 }
 
-                iost_snprintf(ctx.ui_tx_approve_l2, 40, "with Key #%u?", ctx.key_index);
+                iost_snprintf(ctx.ui_tx_approve_l2, 40, "with Key #%u?", ctx.bip_32_path[ctx.bip_32_length - 1]);
 
                 UX_REDISPLAY();
             }
@@ -297,19 +300,21 @@ void handle_sign_transaction(
     uint8_t p1,
     uint8_t p2,
     const uint8_t* const buffer,
-    uint16_t len,
+    uint16_t size,
     /* out */ volatile unsigned int* flags,
     /* out */ volatile unsigned int* tx
 ) {
     UNUSED(p2);
-    UNUSED(len);
+//    UNUSED(len);
     UNUSED(tx);
 
+    // Read BIP32 path
+    ctx.bip_32_length = io_read_bip32(buffer, size, ctx.bip_32_path);
+
     // Key Index
-    ctx.key_index = U4LE(buffer, 0);
-    
+//    ctx.key_index = U4LE(buffer, 0);
     // Raw Tx Length
-    ctx.raw_transaction_length = len - 4;
+    ctx.raw_transaction_length = size - 4;
     
     // Oops Oof Owie
     if (ctx.raw_transaction_length > MAX_TX_SIZE) {

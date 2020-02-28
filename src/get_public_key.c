@@ -23,7 +23,9 @@ static const uint8_t DISPLAY_SIZE = 12;
 //static const uint8_t RIGHT_BTN_ID = BUTTON_RIGHT;
 
 static struct get_public_key_context_t {
-    uint32_t key_index;
+//    uint32_t key_index;
+    uint8_t bip_32_length;
+    uint32_t bip_32_path[BIP32_PATH_LENGTH];
 
     // Lines on the UI Screen
     // L1 Only used for title in Nano X compare
@@ -214,39 +216,40 @@ void get_pk()
 {
     // Derive Key
 //    iost_derive_keypair(ctx.key_index, NULL, &ctx.public);
-    if (iost_derive_keypair(ctx.key_index, NULL, &ctx.public_key) != 0) {
+    if (iost_derive_keypair(ctx.bip_32_path, ctx.bip_32_length, NULL, &ctx.public_key) != 0) {
         THROW(EXCEPTION_INTERNAL_ERROR);
-    } else {
-        // Put Key bytes in APDU buffer
-        public_key_to_bytes(G_io_apdu_buffer, &ctx.public_key);
-
-        // Populate Key Hex String
-        bin2hex(ctx.full_key, G_io_apdu_buffer, KEY_SIZE);
-        ctx.full_key[KEY_SIZE] = '\0';
     }
+
+    // Put Key bytes in APDU buffer
+    public_key_to_bytes(&ctx.public_key, G_io_apdu_buffer);
+
+    // Populate Key Hex String
+    bin2hex(ctx.full_key, G_io_apdu_buffer, KEY_SIZE);
+    ctx.full_key[KEY_SIZE] = '\0';
 }
 
 void handle_get_public_key(
         uint8_t p1,
         uint8_t p2,
         const uint8_t* const buffer,
-        uint16_t len,
+        uint16_t size,
         /* out */ volatile unsigned int* flags,
         /* out */ volatile unsigned int* tx
 ) {
     UNUSED(p1);
     UNUSED(p2);
-    UNUSED(len);
     UNUSED(tx);
 
-    // Read Key Index
-    ctx.key_index = U4LE(buffer, 0);
+    // Read BIP32 path
+    ctx.bip_32_length = io_read_bip32(buffer, size, ctx.bip_32_path);
+//    ctx.key_index = bip_32_path[bip_32_length - 1];
+    // ctx.key_index = U4LE(buffer, 0);
 
     // Title for Nano X compare screen
-    iost_snprintf(ctx.ui_approve_l1, 40, "Public Key #%u", ctx.key_index);
+    iost_snprintf(ctx.ui_approve_l1, 40, "Public Key #%u", ctx.bip_32_path[ctx.bip_32_length - 1]);
 
     // Complete "Export Public | Key #x?"
-    iost_snprintf(ctx.ui_approve_l2, 40, "Key #%u?", ctx.key_index);
+    iost_snprintf(ctx.ui_approve_l2, 40, "Key #%u?", ctx.bip_32_path[ctx.bip_32_length - 1]);
 
     // Populate context with PK
     get_pk();

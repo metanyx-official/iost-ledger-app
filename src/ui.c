@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "utils.h"
+#include <ux.h>
 /*
  * Defines the main menu and idle actions for the app
  */
@@ -172,3 +173,7 @@ void ui_idle(void) {
 #endif // TARGET_NANOS
 }
 
+void io_seproxyhal_display(const bagl_element_t* element)
+{
+    io_seproxyhal_display_default(element);
+}
