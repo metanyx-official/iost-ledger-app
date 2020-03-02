@@ -44,7 +44,7 @@ Utils.delay().then(ledger.open).then(() => {
     kp.id
   );
 
-  Assert.deepStrictEqual(ledgerConfig, {hasStorage: false, version: "1.0.13"});
+  Assert.deepStrictEqual(ledgerConfig, {hasStorage: false, version: "1.0.2"});
   Assert.strictEqual(transaction.gasRatio, 1);
   Assert.strictEqual(transaction.gasLimit, 1000000);
   Assert.deepEqual(transaction.signers, []);
@@ -79,6 +79,7 @@ Utils.delay().then(ledger.open).then(() => {
   Assert.strictEqual(transaction.chain_id, 1024);
   Assert.strictEqual(transaction.reserved, null);
   Assert.strictEqual(transaction.delay, 0);
+
 
   return Utils.callAsync(
     ledger.signTransaction.bind(

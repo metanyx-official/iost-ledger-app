@@ -16,21 +16,8 @@
 #include <stdint.h>
 //#include "get_public_key.h"
 
-// Sizes in Characters, not Bytes
-// Used for Display Only
-static const uint8_t DISPLAY_SIZE = 18; // characters @ 11pt sys font
-// User IDs for BAGL Elements
-static const uint8_t LEFT_ICON_ID = 0x01;
-static const uint8_t RIGHT_ICON_ID = 0x02;
-static const uint8_t LINE_1_ID = 0x05;
-static const uint8_t LINE_2_ID = 0x06;
-
 static struct
 {
-//    uint32_t key_index;
-    uint8_t bip_32_length;
-    uint32_t bip_32_path[BIP32_PATH_LENGTH];
-
     // Lines on the UI Screen
     // L1 Only used for title in Nano X compare
     char ui_approve_l2[DISPLAY_SIZE + 1];
@@ -234,8 +221,13 @@ void compare_pk() {
 
 #endif // TARGET_NANOX
 
-void get_pk(uint8_t p1, uint8_t p2, uint8_t* output)
-{
+void get_pk(
+    const uint32_t* const bip_32_path,
+    const uint16_t bip_32_length,
+    const uint8_t p1,
+    const uint8_t p2,
+    uint8_t* output
+) {
     uint8_t pk[PUBLIC_KEY_SIZE] = {};
 
     if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
@@ -244,7 +236,7 @@ void get_pk(uint8_t p1, uint8_t p2, uint8_t* output)
     }
 
     // Derive key
-    if (iost_derive_keypair(context.bip_32_path, context.bip_32_length, NULL, &context.public_key) != 0) {
+    if (iost_derive_keypair(bip_32_path, bip_32_length, NULL, &context.public_key) != 0) {
         PRINTF("iost_derive_keypair failed\n");
         THROW(SW_INTERNAL_ERROR);
     }
@@ -277,10 +269,11 @@ void handle_get_public_key(
     volatile uint16_t* tx
 ) {
     // Read BIP32 path
-    context.bip_32_length = io_read_bip32(buffer, buffer_length, context.bip_32_path);
+    uint32_t bip_32_path[BIP32_PATH_LENGTH];
+    const uint8_t bip_32_length = io_read_bip32(buffer, buffer_length, bip_32_path);
 
     // Populate context with PK
-    get_pk(p1, p2, G_io_apdu_buffer + *tx);
+    get_pk(bip_32_path, bip_32_length, p1, p2, G_io_apdu_buffer + *tx);
 
     if (
         (p1 != P1_CONFIRM) ||
@@ -299,8 +292,8 @@ void handle_get_public_key(
         context.ui_approve_l2,
         DISPLAY_SIZE,
         "Key #%u?",
-        context.bip_32_length > 0
-            ? context.bip_32_path[context.bip_32_length - 1] - BIP32_PATH_MASK
+        bip_32_length > 0
+            ? bip_32_path[bip_32_length - 1] - BIP32_PATH_MASK
             : 0
     );
 #if defined(TARGET_NANOS)

@@ -7,6 +7,16 @@
 
 struct bagl_element_s;
 
+// Sizes in Characters, not Bytes
+// Used for Display Only
+#define DISPLAY_SIZE 18 // characters @ 11pt sys font
+
+// User IDs for BAGL Elements
+#define LINE_1_ID 5
+#define LINE_2_ID 6
+#define LEFT_ICON_ID 1
+#define RIGHT_ICON_ID 2
+
 #if defined(TARGET_NANOS)
 #define UI_BAGLE_ELEMENT(text) (const char* const)(text)
 #elif defined(TARGET_NANOX)
@@ -15,11 +25,22 @@ struct bagl_element_s;
 #define UI_BAGLE_ELEMENT(text) (const char* const)(text),0,0,0,NULL,NULL,NULL
 #endif // TARGET_NANOX
 
-// Common UI element definitions for Ledger Nano S, Ledger Nano X and Ledger Blue
+#if defined(TARGET_NANOS)
+
+// Common UI element definit1ons for Ledger Nano S, Ledger Nano X and Ledger Blue
 #define UI_BACKGROUND() {{BAGL_RECTANGLE,0,0,0,128,32,0,0,BAGL_FILL,0,0xFFFFFF,0,0},UI_BAGLE_ELEMENT(NULL)}
 #define UI_ICON_LEFT(userid, glyph) {{BAGL_ICON,userid,3,12,7,7,0,0,0,0xFFFFFF,0,0,glyph},UI_BAGLE_ELEMENT(NULL)}
 #define UI_ICON_RIGHT(userid, glyph) {{BAGL_ICON,userid,117,13,8,6,0,0,0,0xFFFFFF,0,0,glyph},UI_BAGLE_ELEMENT(NULL)}
 #define UI_TEXT(userid, x, y, w, text) {{BAGL_LABELINE,userid,x,y,w,12,0,0,0,0xFFFFFF,0,BAGL_FONT_OPEN_SANS_REGULAR_11px|BAGL_FONT_ALIGNMENT_CENTER,0},UI_BAGLE_ELEMENT(text)}
+#define UI_ICON(userid, x, y, w, glyph) {{BAGL_ICON,userid,x,y,w,6,0,0,0,0xFFFFFF,0,BAGL_FONT_OPEN_SANS_REGULAR_11px|BAGL_FONT_ALIGNMENT_CENTER,glyph},NULL}
+
+#elif defined(TARGET_NANOX)
+
+#include "ux.h"
+// Common UI element definitions for Nano X
+
+#endif // TARGET_NANOS
+
 
 //extern bagl_element_t ui_background();
 //extern bagl_element_t ui_icon_left(unsigned char user_id, unsigned char icon_id);

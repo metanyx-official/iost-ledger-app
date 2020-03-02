@@ -7,6 +7,7 @@
 #include <cx.h>
 
 #define HBAR 100000000
+#define HASH_SHA3_SIZE PUBLIC_KEY_SIZE
 
 void iost_transaction_add_action(struct _Transaction* tx, const char* contract, const char* abi, const void* data)
 {
@@ -55,18 +56,18 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 //    }
 //}
 
-int iost_derive_keypair(
+uint16_t iost_derive_keypair(
     const uint32_t * const bip_32_path,
     const int bip_32_length,
     cx_ecfp_256_private_key_t* secret_key,
     cx_ecfp_256_public_key_t* public_key
 ) {
-    int result = -1;
-    cx_ecfp_public_key_t p_k;
-    cx_ecfp_private_key_t s_k;
+    uint16_t result = (uint16_t)(-1);
+    cx_ecfp_public_key_t p_k = {};
+    cx_ecfp_private_key_t s_k = {};
     cx_ecfp_public_key_t* ppk = &p_k;
     cx_ecfp_private_key_t* psk = &s_k;
-    uint8_t private_key[BIP32_KEY_SIZE];
+    uint8_t private_key[BIP32_KEY_SIZE] = {};
     // uint32_t bip_32_path[BIP32_PATH_LENGTH] = {
     //     IOST_NET_TYPE | BIP32_PATH_MASK,
     //     IOST_COIN_ID | BIP32_PATH_MASK,
@@ -166,36 +167,42 @@ void iost_derive_keypair_old(
     os_memset(&pk, 0, sizeof(pk));
 }
 
-void iost_sign(
+uint16_t iost_sign(
     const uint32_t* const bip_32_path,
     const int bip_32_length,
-    const uint8_t* trx,
-    uint8_t trx_len,
-    /* out */ uint8_t* result
+    const uint8_t* const trx_body,
+    const uint8_t trx_lengtn,
+    uint8_t* result
 ) {
-    cx_ecfp_private_key_t pk;
+    cx_sha3_t sha3 = {};
+    cx_ecfp_private_key_t pk = {};
+    uint8_t trx_hash[HASH_SHA3_SIZE] = {};
+    const uint16_t hash_length = cx_hash((cx_hash_t*)(&sha3), CX_LAST, trx_body, trx_lengtn, trx_hash, HASH_SHA3_SIZE);
+    uint16_t signature_length = 0;
 
     // Get Keys
-    if (iost_derive_keypair(bip_32_path, bip_32_length, &pk, NULL) == 0) {
+    if (hash_length != 0 && iost_derive_keypair(bip_32_path, bip_32_length, &pk, NULL) == 0) {
         // Sign Transaction
         // <cx.h> 2283
         // Claims to want Hashes, but other apps use the message itself
         // and complain that the documentation is wrong
-        cx_eddsa_sign(
-            &pk,        // private key
-            0,          // mode (UNSUPPORTED)
-            CX_SHA512,  // hashID
-            trx,         // hash (really message)
-            trx_len,     // hash length (really message length)
-            NULL,       // context (UNUSED)
-            0,          // context length (0)
-            result,     // signature
-            64,         // signature length
-            NULL        // info
+        signature_length = (uint16_t)cx_eddsa_sign(
+            &pk,                // private key
+            0,                  // mode (UNSUPPORTED)
+            CX_SHA256,          // hashID
+            trx_hash,           // hash (really message)
+            hash_length,        // hash length (really message length)
+            NULL,               // context (UNUSED)
+            0,                  // context length (0)
+            result,             // signature
+            HASH_SHA3_SIZE * 2, // signature length
+            NULL                // info
         );
         // Clear private key
         os_memset(&pk, 0, sizeof(cx_ecfp_private_key_t));
     }
+
+    return signature_length;
 }
 
 void public_key_to_bytes(

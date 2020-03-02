@@ -16,14 +16,14 @@ struct cx_ecfp_256_public_key_s;
 
 void iost_transaction_add_action(struct _Transaction *tx, const char *contract, const char *abi, const void *data);
 
-extern int iost_derive_keypair(
+extern uint16_t iost_derive_keypair(
     const uint32_t * const bip_32_path,
     const int bip_32_length,
     /* out */ struct cx_ecfp_256_private_key_s* secret_key,
     /* out */ struct cx_ecfp_256_public_key_s* public_key
 );
 
-extern void iost_sign(
+extern uint16_t iost_sign(
     const uint32_t * const bip_32_path,
     const int bip_32_length,
     const uint8_t* tx,

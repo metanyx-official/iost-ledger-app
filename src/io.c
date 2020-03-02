@@ -102,11 +102,11 @@ uint16_t io_read_bip32(
         THROW(SW_WRONG_LENGTH);
     }
     for (unsigned int i = 0; i < bip_32_length; i++) {
-        bip_32_path[i] =
-            (*buffer++ << 24u) |
-            (*buffer++ << 16u) |
-            (*buffer++ << 8u) |
-            (*buffer++);
+        bip_32_path[i] = 0;
+        bip_32_path[i] |= (uint32_t)(*buffer++ << 0x18);
+        bip_32_path[i] |= (uint32_t)(*buffer++ << 0x10);
+        bip_32_path[i] |= (uint32_t)(*buffer++ << 0x08);
+        bip_32_path[i] |= (uint32_t)(*buffer++ << 0x00);
     }
     return bip_32_length;
  }
