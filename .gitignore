@@ -15,3 +15,6 @@ src/pb_*
 proto/*.c
 proto/*.h
 *.pyc
+
+# External sdk
+bolos_env

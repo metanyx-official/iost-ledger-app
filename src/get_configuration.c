@@ -6,27 +6,30 @@
 #include <os_io_seproxyhal.h>
 
 void handle_get_configuration(
-    uint8_t p1,
-    uint8_t p2,
+    const uint8_t p1,
+    const uint8_t p2,
     const uint8_t* const buffer,
-    uint16_t len,
-    /* out */ volatile unsigned int* flags,
-    /* out */ volatile unsigned int* tx
+    const uint16_t buffer_length,
+    volatile uint8_t* flags,
+    volatile uint16_t* tx
 ) {
     UNUSED(p1);
     UNUSED(p2);
     UNUSED(buffer);
-    UNUSED(len);
-    UNUSED(flags);
-    UNUSED(tx);
+    UNUSED(buffer_length);
 
     // storage allowed?
-    G_io_apdu_buffer[0] = 0;
-
+    G_io_apdu_buffer[(*tx)++] = 0;
     // version
-    G_io_apdu_buffer[1] = APPVERSION_M;
-    G_io_apdu_buffer[2] = APPVERSION_N;
-    G_io_apdu_buffer[3] = APPVERSION_P;
+    G_io_apdu_buffer[(*tx)++] = APPVERSION_M;
+    G_io_apdu_buffer[(*tx)++] = APPVERSION_N;
+    G_io_apdu_buffer[(*tx)++] = APPVERSION_P;
 
-    io_exchange_with_code(EXCEPTION_OK, 4);
+    THROW(SW_OK);
+//    io_set_status(SW_OK, flags, tx);
+}
+
+void clear_context_get_configuration()
+{
+    // No context
 }

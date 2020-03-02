@@ -1,0 +1,31 @@
+{
+  "name": "ledger-wallet-iost",
+  "version": "1.0.0",
+  "description": "The application for testing IOST blockhain with Ledger Nano S",
+  "repository": {
+    "type": "git",
+    "url": "git+https://git.sfxdx.ru/iost/ledger-app-iost.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "start": "NODE_ENV=production node index.js",
+    "debug": "DEBUG=* NODE_ENV=development node --nolazy --inspect-brk=9229 index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@ledgerhq/hw-transport": "^5.9.0",
+    "@ledgerhq/hw-transport-u2f": "^5.9.0",
+    "@ledgerhq/hw-transport-node-hid-noevents": "^5.10.0",
+    "bip32-path": "^0.4.2",
+    "config": "^3.2.5",
+    "fetch": "^1.1.0",
+    "iost": "^0.1.20"
+  },
+  "devDependencies": {
+    "@ledgerhq/logs": "^5.9.0",
+    "debug": "^4.1.1",
+    "eslint": "^6.8.0"
+  }
+}

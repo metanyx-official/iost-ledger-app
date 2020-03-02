@@ -12,7 +12,19 @@
 //#define FULL_ADDRESS_LENGTH 54
 #define MAX_TX_SIZE 512
 
-extern void io_exchange_with_code(uint16_t code, uint16_t tx);
-extern uint8_t io_read_bip32(const uint8_t *buffer, uint16_t size, uint32_t *bip32);
+extern uint16_t io_read_bip32(
+    const uint8_t* buffer,
+    uint16_t buffer_length,
+    uint32_t *bip32_path
+);
+void io_set_status(
+    const uint16_t sw,
+    volatile uint8_t* flags,
+    volatile uint16_t* tx
+);
+extern void io_exchange_status(
+    const uint16_t status,
+    uint16_t tx
+);
 
 #endif // LEDGER_APP_IOST_IO_H

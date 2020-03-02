@@ -30,7 +30,7 @@ APP_LOAD_PARAMS= --curve ed25519 --path "44'/291'" --appFlags 0x240 $(COMMON_LOA
 
 APPVERSION_M = 1
 APPVERSION_N = 0
-APPVERSION_P = 0
+APPVERSION_P = 1
 APPVERSION = $(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 APPNAME = IOST
 
@@ -49,7 +49,7 @@ endif
 ################
 # Default rule #
 ################
-all: cleanpb proto default
+all: default
 
 ############
 # Platform #
@@ -133,7 +133,6 @@ LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
 LDLIBS   += -lm -lgcc -lc
 
-
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs
 
@@ -175,8 +174,8 @@ sdk/ledger-nanopb/generator/proto/nanopb_pb2.py:
 	@ make -C sdk/ledger-nanopb/generator/proto
 
 # TODO: Figure out a way to do this without copying .c files
-.PHONY: proto
-proto: sdk/ledger-nanopb/generator/proto/nanopb_pb2.py
+.PHONY: iost-proto
+iost-proto: sdk/ledger-nanopb/generator/proto/nanopb_pb2.py
 	@ cp -fr sdk/ledger-nanopb/pb_*.c sdk/ledger-nanopb/pb*.h src/
 	@ echo 'syntax = "proto3";' | tee src/$(APPNAME)_api.proto
 	@ echo 'import "nanopb.proto";' | tee -a src/$(APPNAME)_api.proto
@@ -191,6 +190,6 @@ proto: sdk/ledger-nanopb/generator/proto/nanopb_pb2.py
 		-I=src \
 		src/$(APPNAME)_api.proto
 
-.PHONY: cleanpb
-cleanpb:
+.PHONY: clean-proto
+clean-proto:
 	@ rm -fr src/pb_*.c src/pb*.h src/*.pb.h src/*.pb.c src/*_api.proto

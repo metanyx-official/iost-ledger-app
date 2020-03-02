@@ -6,6 +6,7 @@
 
 #define IOST_NET_TYPE 44
 #define IOST_COIN_ID 291
+#define PUBLIC_KEY_SIZE 32
 
 struct _Transaction;
 

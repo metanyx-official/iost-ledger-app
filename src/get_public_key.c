@@ -4,11 +4,13 @@
 #include "utils.h"
 #include "io.h"
 #include "ui.h"
-#include "iost.h"
 #include "errors.h"
 #include "debug.h"
 #include "printf.h"
+#include "iost.h"
+#include "base58.h"
 #include <bagl.h>
+#include <os.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -16,7 +18,6 @@
 
 // Sizes in Characters, not Bytes
 // Used for Display Only
-static const uint8_t KEY_SIZE = BIP32_KEY_SIZE * 2;
 static const uint8_t DISPLAY_SIZE = 18; // characters @ 11pt sys font
 // User IDs for BAGL Elements
 static const uint8_t LEFT_ICON_ID = 0x01;
@@ -24,7 +25,8 @@ static const uint8_t RIGHT_ICON_ID = 0x02;
 static const uint8_t LINE_1_ID = 0x05;
 static const uint8_t LINE_2_ID = 0x06;
 
-static struct get_public_key_context_t {
+static struct
+{
 //    uint32_t key_index;
     uint8_t bip_32_length;
     uint32_t bip_32_path[BIP32_PATH_LENGTH];
@@ -35,11 +37,11 @@ static struct get_public_key_context_t {
 
     cx_ecfp_public_key_t public_key;
 
+    uint16_t pk_length;
     // Public Key Compare
     uint8_t display_index;
-    uint8_t full_key[KEY_SIZE + 1];
     uint8_t partial_key[DISPLAY_SIZE + 1];
-} ctx;
+} context;
 
 #if defined(TARGET_NANOS)
 
@@ -52,7 +54,7 @@ static const bagl_element_t ui_get_public_key_compare[] = {
     //      <partial>
     //
     UI_TEXT(LINE_1_ID, 0, 12, 128, "Public Key"),
-    UI_TEXT(LINE_2_ID, 0, 26, 128, ctx.partial_key)
+    UI_TEXT(LINE_2_ID, 0, 26, 128, context.partial_key)
 };
 
 static const bagl_element_t ui_get_public_key_approve[] = {
@@ -64,13 +66,15 @@ static const bagl_element_t ui_get_public_key_approve[] = {
     //       Key #123?
     //
     UI_TEXT(LINE_1_ID, 0, 12, 128, "Export Public"),
-    UI_TEXT(LINE_2_ID, 0, 26, 128, ctx.ui_approve_l2),
+    UI_TEXT(LINE_2_ID, 0, 26, 128, context.ui_approve_l2),
 };
 
-void shift_partial_key() {
+
+void shift_partial_key()
+{
     os_memmove(
-        ctx.partial_key,
-        ctx.full_key + ctx.display_index,
+        context.partial_key,
+        G_io_apdu_buffer + context.display_index,
         DISPLAY_SIZE
     );
 }
@@ -83,13 +87,17 @@ static unsigned int ui_get_public_key_compare_button(
     switch (button_mask) {
         case BUTTON_LEFT: // Left
         case BUTTON_EVT_FAST | BUTTON_LEFT:
-            if (ctx.display_index > 0) ctx.display_index--;
+            if (context.display_index > 0) {
+                context.display_index--;
+            }
             shift_partial_key();
             UX_REDISPLAY();
             break;
         case BUTTON_RIGHT: // Right
         case BUTTON_EVT_FAST | BUTTON_RIGHT:
-            if (ctx.display_index < KEY_SIZE - DISPLAY_SIZE) ctx.display_index++;
+            if (context.display_index < context.pk_length - DISPLAY_SIZE) {
+                context.display_index++;
+            }
             shift_partial_key();
             UX_REDISPLAY();
             break;
@@ -103,22 +111,28 @@ static unsigned int ui_get_public_key_compare_button(
 static const bagl_element_t* ui_prepro_get_public_key_compare(
     const bagl_element_t* element
 ) {
-    if (element->component.userid == LEFT_ICON_ID
-        && ctx.display_index == 0)
+    if (
+        (element->component.userid == LEFT_ICON_ID) &&
+        (context.display_index == 0)
+    ) {
         return NULL; // Hide Left Arrow at Left Edge
-    if (element->component.userid == RIGHT_ICON_ID
-        && ctx.display_index == KEY_SIZE - DISPLAY_SIZE) 
+    }
+    if (
+        (element->component.userid == RIGHT_ICON_ID) &&
+        (context.display_index == context.pk_length - DISPLAY_SIZE)
+    ) {
         return NULL; // Hide Right Arrow at Right Edge
+    }
     return element;
 }
 
 void compare_pk() {
     // init partial key str from full str
-    os_memmove(ctx.partial_key, ctx.full_key, DISPLAY_SIZE);
-    ctx.partial_key[DISPLAY_SIZE] = '\0';
+    os_memmove(context.partial_key, G_io_apdu_buffer, DISPLAY_SIZE);
+    context.partial_key[DISPLAY_SIZE] = '\0';
     
     // init display index
-    ctx.display_index = 0;
+    context.display_index = 0;
 
     // Display compare with button mask
     UX_DISPLAY(
@@ -133,13 +147,13 @@ static unsigned int ui_get_public_key_approve_button(
 ) {
     UNUSED(button_mask_counter);
     switch (button_mask) {
-        case BUTTON_EVT_RELEASED | BUTTON_LEFT: // REJECT
-            io_exchange_with_code(EXCEPTION_USER_REJECTED, 0);
+        case BUTTON_EVT_RELEASED | BUTTON_LEFT:
+            io_exchange_status(SW_USER_REJECTED, 0);
             ui_idle();
             break;
 
-        case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
-            io_exchange_with_code(EXCEPTION_OK, 32);
+        case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
+            io_exchange_status(SW_OK, context.pk_length + 1);
             compare_pk();
             break;
 
@@ -168,7 +182,7 @@ UX_STEP_NOCB(
     bn,
     {
         "Export Public",
-        ctx.ui_approve_l2
+        context.ui_approve_l2
     }
 );
 
@@ -198,7 +212,7 @@ UX_STEP_CB(
     ui_idle(),
     {
         .title = "Public Key",
-        .text = (char*) ctx.full_key
+        .text = (char*) context.full_key
     }
 );
 
@@ -220,71 +234,102 @@ void compare_pk() {
 
 #endif // TARGET_NANOX
 
-void get_pk()
+void get_pk(uint8_t p1, uint8_t p2, uint8_t* output)
 {
-    // Derive Key
-//    iost_derive_keypair(ctx.key_index, NULL, &ctx.public);
-    if (iost_derive_keypair(ctx.bip_32_path, ctx.bip_32_length, NULL, &ctx.public_key) != 0) {
-        THROW(EXCEPTION_INTERNAL_ERROR);
+    uint8_t pk[PUBLIC_KEY_SIZE] = {};
+
+    if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
+        PRINTF("%d != P1_CONFIRM || %d != P1_SILENT\n", p1, p1);
+        THROW(SW_INVALID_P1P2);
     }
 
-    PRINTF("Public key generated %.*H\n", sizeof(cx_ecfp_public_key_t), ctx.public_key);
+    // Derive key
+    if (iost_derive_keypair(context.bip_32_path, context.bip_32_length, NULL, &context.public_key) != 0) {
+        PRINTF("iost_derive_keypair failed\n");
+        THROW(SW_INTERNAL_ERROR);
+    }
+
+    context.pk_length = PUBLIC_KEY_SIZE;
+    public_key_to_bytes(&context.public_key, pk);
+    PRINTF("The public key generated: %.*H\n", context.pk_length, pk);
 
     // Put Key bytes in APDU buffer
-    public_key_to_bytes(&ctx.public_key, G_io_apdu_buffer);
-
-    // Populate Key Hex String
-    bin2hex(ctx.full_key, G_io_apdu_buffer, KEY_SIZE);
-    ctx.full_key[KEY_SIZE] = '\0';
+    switch (p2) {
+    case P2_HEX:
+        context.pk_length = bin2hex(output, pk, PUBLIC_KEY_SIZE);
+        break;
+    case P2_BASE58:
+        context.pk_length = encode_base_58(pk, PUBLIC_KEY_SIZE, output);
+        break;
+    default:
+        os_memmove(output, pk, context.pk_length);
+        break;
+    }
+    *(output + context.pk_length) = 0;
 }
 
 void handle_get_public_key(
-        uint8_t p1,
-        uint8_t p2,
-        const uint8_t* const buffer,
-        uint16_t size,
-        /* out */ volatile unsigned int* flags,
-        /* out */ volatile unsigned int* tx
+    const uint8_t p1,
+    const uint8_t p2,
+    const uint8_t* const buffer,
+    const uint16_t buffer_length,
+    volatile uint8_t* flags,
+    volatile uint16_t* tx
 ) {
-    UNUSED(p1);
-    UNUSED(p2);
-    UNUSED(tx);
-
-    // Read Key Index
-    ctx.bip_32_length = io_read_bip32(buffer, size, ctx.bip_32_path);
-
-    // Complete "Export Public | Key #x?"
-    iost_snprintf(ctx.ui_approve_l2, DISPLAY_SIZE, "Key #%u?", ctx.bip_32_path[ctx.bip_32_length - 1] - BIP32_PATH_MASK);
+    // Read BIP32 path
+    context.bip_32_length = io_read_bip32(buffer, buffer_length, context.bip_32_path);
 
     // Populate context with PK
-    get_pk();
+    get_pk(p1, p2, G_io_apdu_buffer + *tx);
 
+    if (
+        (p1 != P1_CONFIRM) ||
+        (p2 != P2_HEX && p2 != P2_BASE58)
+    ) {
+        *tx += context.pk_length + 1;
+        PRINTF("Write out %.*H\n", *tx, G_io_apdu_buffer);
+        THROW(SW_OK);
+//        io_set_status(SW_OK, flags, tx);
+//        *flags |= IO_RETURN_AFTER_TX;
+//        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+//        io_exchange_with_code(SW_OK, *tx);
+    }
+    // Complete "Export Public | Key #x?"
+    iost_snprintf(
+        context.ui_approve_l2,
+        DISPLAY_SIZE,
+        "Key #%u?",
+        context.bip_32_length > 0
+            ? context.bip_32_path[context.bip_32_length - 1] - BIP32_PATH_MASK
+            : 0
+    );
 #if defined(TARGET_NANOS)
-
     UX_DISPLAY(ui_get_public_key_approve, NULL);
-
-#elif defined(TARGET_NANOX)
-
+#else
     ux_flow_init(0, ux_approve_pk_flow, NULL);
-
-#endif // TARGET
+#endif // TARGET_NANOS
 
     *flags |= IO_ASYNCH_REPLY;
+}
+
+void clear_context_get_public_key()
+{
+     os_memset(&context, 0, sizeof(context));
 }
 
 
 //UNUSED(tx);
 
 //// Read BIP32 path
-//ctx.bip_32_length = io_read_bip32(buffer, size, ctx.bip_32_path);
-////    ctx.key_index = bip_32_path[bip_32_length - 1];
-//// ctx.key_index = U4LE(buffer, 0);
+//context.bip_32_length = io_read_bip32(buffer, size, context.bip_32_path);
+////    context.key_index = bip_32_path[bip_32_length - 1];
+//// context.key_index = U4LE(buffer, 0);
 
 //// Title for Nano X compare screen
-//iost_snprintf(ctx.ui_approve_l1, 40, "Public Key #%u", ctx.bip_32_path[ctx.bip_32_length - 1]);
+//iost_snprintf(context.ui_approve_l1, 40, "Public Key #%u", context.bip_32_path[context.bip_32_length - 1]);
 
 //// Complete "Export Public | Key #x?"
-//iost_snprintf(ctx.ui_approve_l2, 40, "Key #%u?", ctx.bip_32_path[ctx.bip_32_length - 1]);
+//iost_snprintf(context.ui_approve_l2, 40, "Key #%u?", context.bip_32_path[context.bip_32_length - 1]);
 
 //// Populate context with PK
 //get_pk();

@@ -28,6 +28,7 @@ RUN apt-get -y install \
 #gcc-multilib g++-multilib \
 # create limited user
 RUN adduser --disabled-password --gecos "" bob
+RUN usermod -aG nogroup bob
 USER bob
 WORKDIR /home/bob
 
@@ -51,6 +52,7 @@ RUN cd app/sdk/speculos && \
     make -C build install
 
 # run app builder and emulator
+RUN touch app/Makefile
 EXPOSE ${ADPU_PORT}
 EXPOSE ${VNC_PORT}
 ENTRYPOINT ["python3", "app/x.py"]

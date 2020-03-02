@@ -20,10 +20,10 @@
 #define INS_GET_CONFIGURATION 0x02
 #define INS_ECHO 0x01
 #define INS_RESET 0x00
-#define P1_ED25519 0x00
-#define P1_SECP256K1 0x01
-#define P2_BASE58 0x00
-#define P2_BINARY 0x01
+#define P1_CONFIRM 0x00
+#define P1_SILENT 0x01
+#define P2_HEX 0x00
+#define P2_BASE58 0x01
 #define P1_FIRST 0x00
 #define P1_MORE 0x80
 #define P2_LAST 0x00

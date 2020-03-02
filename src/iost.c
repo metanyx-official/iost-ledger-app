@@ -203,15 +203,15 @@ void iost_sign(
 }
 
 void public_key_to_bytes(
-    const cx_ecfp_256_public_key_t* public_key,
+    const cx_ecfp_public_key_t* public_key,
     uint8_t* dst
 ) {
-    for (int i = 0; i < 32; i++) {
-        dst[i] = public_key->W[64 - i];
+    for (int i = 0; i < PUBLIC_KEY_SIZE; i++) {
+        dst[i] = public_key->W[PUBLIC_KEY_SIZE * 2 - i];
     }
 
-    if (public_key->W[32] & 1) {
-        dst[31] |= 0x80;
+    if (public_key->W[PUBLIC_KEY_SIZE] & 1) {
+        dst[PUBLIC_KEY_SIZE - 1] |= 0x80;
     }
 }
 

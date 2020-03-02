@@ -1,0 +1,15 @@
+{
+    "iost": {
+        "api": {
+            "url": "https://test.api.iost.io"
+        },
+        "account": {
+            "name": "ledger_000",
+            "key": "4qHLYxWchYpvqiV3E2BT7p7wEKLAcQAeM7rMMvgjLhEts45FZcVKTztSJCsizNzxR2sfCNinXAFx7d9Yov7eDcJa"
+        }
+    },
+    "ledger": {
+        "transport": "hid"
+    }
+
+}

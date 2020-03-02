@@ -87,32 +87,50 @@ unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
     return 0;
 }
 
-void io_exchange_with_code(uint16_t code, uint16_t tx)
-{
-    tx = set_error_code(G_io_apdu_buffer, tx, code);
-    io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
+
+uint16_t io_read_bip32(
+    const uint8_t* buffer,
+    const uint16_t buffer_length,
+    uint32_t* bip_32_path
+) {
+    uint16_t bip_32_length = *buffer++;
+    if (
+        (bip_32_length < 0x01 || bip_32_length > APDU_MAX_SIZE) ||
+        (sizeof(uint32_t) * bip_32_length > buffer_length - 1)
+    ) {
+        PRINTF("invalid BIP32 length: %u\n", bip_32_length);
+        THROW(SW_WRONG_LENGTH);
+    }
+    for (unsigned int i = 0; i < bip_32_length; i++) {
+        bip_32_path[i] =
+            (*buffer++ << 24u) |
+            (*buffer++ << 16u) |
+            (*buffer++ << 8u) |
+            (*buffer++);
+    }
+    return bip_32_length;
+ }
+
+void io_set_status(
+    const uint16_t sw,
+    volatile uint8_t* flags,
+    volatile uint16_t* tx
+) {
+    if (flags != NULL) {
+        *flags |= IO_RETURN_AFTER_TX;
+    }
+    if (tx != NULL) {
+        G_io_apdu_buffer[(*tx)++] = (uint8_t)(sw >> 8);
+        G_io_apdu_buffer[(*tx)++] = (uint8_t)(sw & 0xFF);
+    }
 }
 
-uint8_t io_read_bip32(const uint8_t* buffer, uint16_t size, uint32_t* bip_32)
-{
-    uint8_t length = buffer[0];
-    buffer += 1;
+void io_exchange_status(
+    const uint16_t sw,
+    uint16_t tx
+) {
+    uint8_t flags = CHANNEL_APDU;
+    io_set_status(sw, &flags, &tx);
+    io_exchange(flags, tx);
+}
 
-    if (
-        (length < 0x01 || length > APDU_MAX_SIZE) || 
-        (1 + 4 * length > size)
-    ) {
-        PRINTF("invalid BIP32 length: %u\n", length);
-        THROW(EXCEPTION_WRONG_LENGTH);
-    }
-
-    for (unsigned int i = 0; i < length; i++) {
-        bip_32[i] = 
-            (buffer[0] << 24u) |
-            (buffer[1] << 16u) |
-            (buffer[2] << 8u) |
-            (buffer[3]);
-        buffer += 4;
-    }
-    return length;
- }

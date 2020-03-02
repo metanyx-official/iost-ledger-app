@@ -1,22 +1,18 @@
 #include "utils.h"
 #include <os.h>
 
-void bin2hex(uint8_t *dst, uint8_t *data, uint64_t inlen) {
+uint32_t bin2hex(
+        uint8_t* dst,
+        const uint8_t* const data,
+        const uint32_t in_len
+) {
 	static uint8_t const hex[] = "0123456789abcdef";
-	for (uint64_t i = 0; i < inlen; i++) {
+
+    for (uint32_t i = 0; i < in_len; i++) {
 		dst[2*i+0] = hex[(data[i]>>4) & 0x0F];
 		dst[2*i+1] = hex[(data[i]>>0) & 0x0F];
 	}
-	dst[2*inlen] = '\0';
-}
-
-uint8_t set_error_code(uint8_t *buffer, uint16_t value, uint8_t offset)
-{
-    *(buffer + offset) = (uint8_t)(value >> 8);
-    offset++;
-    *(buffer + offset) = (uint8_t)(value & 0xFF);
-    offset++;
-    return offset;
+    return in_len * 2;
 }
 
 void callback_os_exit(unsigned int exit_code)

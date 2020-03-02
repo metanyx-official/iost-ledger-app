@@ -5,16 +5,20 @@
 #include <stdint.h>
 
 typedef void handler_fn_t(
-    uint8_t p1,
-    uint8_t p2,
+    const uint8_t p1,
+    const uint8_t p2,
     const uint8_t* const buffer,
-    uint16_t size,
-    /* out */ volatile unsigned int* flags,
-    /* out */ volatile unsigned int* tx
+    const uint16_t buffer_length,
+    /* out */ volatile uint8_t* flags,
+    /* out */ volatile uint16_t* tx
 );
 
 extern handler_fn_t handle_get_configuration;
 extern handler_fn_t handle_get_public_key;
 extern handler_fn_t handle_sign_transaction;
+
+extern void clear_context_get_configuration();
+extern void clear_context_get_public_key();
+extern void clear_context_sign_transaction();
 
 #endif // LEDGER_APP_IOST_HANDLERS_H
