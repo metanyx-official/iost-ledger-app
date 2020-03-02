@@ -2,10 +2,6 @@
 #include "globals.h"
 #include "io.h"
 #include "printf.h"
-#include "pb_decode.h"
-#include "pb_encode.h"
-#include "pb_common.h"
-#include "IOST_api.pb.h"
 #include <os.h>
 #include <os_io_seproxyhal.h>
 #include <cx.h>

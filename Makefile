@@ -1,6 +1,6 @@
 #*******************************************************************************
 #   Ledger App IOST
-#   (c) 2020 Stanislav Shihalev <sshihalev@sfxdx.ru>
+#   (c) 2020 IntegralTeam <repo@sfxdx.ru>
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ APP_LOAD_PARAMS= --curve ed25519 --path "44'/291'" --appFlags 0x240 $(COMMON_LOA
 
 APPVERSION_M = 1
 APPVERSION_N = 0
-APPVERSION_P = 1
+APPVERSION_P = 13
 APPVERSION = $(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 APPNAME = IOST
 
@@ -162,34 +162,3 @@ dep/%.d: %.c Makefile
 
 listvariants:
 	@echo VARIANTS COIN IOST
-
-#check:
-#	@ clang-tidy \
-#		$(foreach path, $(APP_SOURCE_PATH), $(shell find $(path) -name "*.c" -and -not -name "pb*" -and -not -name "glyphs*")) -- \
-#		$(CFLAGS) \
-#		$(addprefix -D, $(DEFINES)) \
-#		$(addprefix -I, $(INCLUDES_PATH))
-
-sdk/ledger-nanopb/generator/proto/nanopb_pb2.py:
-	@ make -C sdk/ledger-nanopb/generator/proto
-
-# TODO: Figure out a way to do this without copying .c files
-.PHONY: iost-proto
-iost-proto: sdk/ledger-nanopb/generator/proto/nanopb_pb2.py
-	@ cp -fr sdk/ledger-nanopb/pb_*.c sdk/ledger-nanopb/pb*.h src/
-	@ echo 'syntax = "proto3";' | tee src/$(APPNAME)_api.proto
-	@ echo 'import "nanopb.proto";' | tee -a src/$(APPNAME)_api.proto
-	@ grep -A 10 'message Action' sdk/go-iost/rpc/pb/rpc.proto | grep -B 10 -e '^}' | tee -a src/$(APPNAME)_api.proto
-	@ grep -A 10 'message AmountLimit' sdk/go-iost/rpc/pb/rpc.proto | grep -B 10 -e '^}' | tee -a src/$(APPNAME)_api.proto
-	@ grep -A 50 'message TxReceipt' sdk/go-iost/rpc/pb/rpc.proto | grep -B 50 -e '^}' | tee -a src/$(APPNAME)_api.proto
-	@ grep -A 50 'message Transaction' sdk/go-iost/rpc/pb/rpc.proto | grep -B 50 -e '^}' | tee -a src/$(APPNAME)_api.proto
-	@ protoc \
-		--plugin=protoc-gen-nanopb=sdk/ledger-nanopb/generator/protoc-gen-nanopb \
-		--nanopb_out=src/ \
-		-I=sdk/ledger-nanopb/generator/proto \
-		-I=src \
-		src/$(APPNAME)_api.proto
-
-.PHONY: clean-proto
-clean-proto:
-	@ rm -fr src/pb_*.c src/pb*.h src/*.pb.h src/*.pb.c src/*_api.proto

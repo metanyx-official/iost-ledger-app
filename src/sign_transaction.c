@@ -8,10 +8,6 @@
 #include "io.h"
 #include "ui.h"
 #include "iost.h"
-#include "pb_decode.h"
-#include "pb_encode.h"
-#include "pb_common.h"
-#include "IOST_api.pb.h"
 #include <stdbool.h>
 
 static struct
@@ -39,9 +35,6 @@ static struct
     // Raw transaction from APDU
     uint8_t raw_transaction[MAX_TX_SIZE];
     uint16_t raw_transaction_length;
-
-    // Parsed transaction
-    Transaction transaction;
 } context;
 
 //#if defined(TARGET_NANOS)
@@ -212,7 +205,7 @@ void handle_transaction_body() {
 #endif
     // Handle parsed protobuf message of transaction body
 
-    switch (context.transaction.time) {
+    switch (context.raw_transaction_length) {
         case 1:
         // It's a "Create Account" transaction
 //        case HederaTransactionBody_cryptoCreateAccount_tag:
@@ -325,20 +318,20 @@ void handle_sign_transaction(
         (buffer + context.bip_32_length),
         context.raw_transaction_length
     );
-    // Make in memory buffer into stream
-    pb_istream_t stream = pb_istream_from_buffer(
-        context.raw_transaction,
-        context.raw_transaction_length
-    );
-    // Decode the Transaction
-    if (!pb_decode(
-        &stream,
-        Transaction_fields,
-        &context.transaction
-    )) {
-        PRINTF("invalid pb bytes");
-        THROW(SW_DATA_INVALID);
-    }
+//    // Make in memory buffer into stream
+//    pb_istream_t stream = pb_istream_from_buffer(
+//        context.raw_transaction,
+//        context.raw_transaction_length
+//    );
+//    // Decode the Transaction
+//    if (!pb_decode(
+//        &stream,
+//        Transaction_fields,
+//        &context.transaction
+//    )) {
+//        PRINTF("invalid pb bytes");
+//        THROW(SW_DATA_INVALID);
+//    }
 
     handle_transaction_body();
 
