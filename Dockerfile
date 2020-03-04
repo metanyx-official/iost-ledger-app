@@ -39,7 +39,7 @@ RUN cp -r .app app
 RUN sed -i 's/-I\/usr\/include/-I\/usr\/arm-linux-gnueabi\/include/' app/sdk/nanos-secure-sdk/Makefile.defines
 RUN cd app/sdk/python-yubicommon && \
     python3 setup.py install --user && \
-    ln -s $(../build-helpers/find-installed-package.sh yubicommon) ../python-u2flib-host/vendor/yubicommon && \
+    ln -s $(bash ../build-helpers/find-installed-package.sh yubicommon) ../python-u2flib-host/u2flib_host/yubicommon && \ 
     cd ../python-u2flib-host && \
     python3 setup.py install --user && \
     cd ../blue-loader-python && \

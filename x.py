@@ -16,6 +16,7 @@ and os.path.basename(os.path.abspath(sys.argv[0])) == os.path.basename(os.path.a
             "make"
         ] + args, cwd=app_dir)
     subprocess.call([
+        sys.executable,
         os.path.join(app_dir, "sdk", "speculos", "speculos.py"),
         "--debug",
         "-m", "nanos",
