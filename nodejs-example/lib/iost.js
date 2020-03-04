@@ -1,193 +1,142 @@
 const Iost = require('iost');
 const Utils = require('./utils');
+const NaCl = require('tweetnacl');
 
 const hostListChain1023 = [
-    "//api.iost.io",
-    "//127.0.0.1",
-    "//localhost"
+  "//api.iost.io",
+  "//127.0.0.1",
+  "//localhost"
 ];
 
 module.exports = function(apiUrl, chainId) {
-    const self = this;
-    const iost = new Iost.IOST({
-        gasRatio: 1,
-        gasLimit: 1000000,
-        delay: 0,
-        expiration: 90,
-        defaultLimit: "1000"
-    });
-    chainId = chainId || (
-        (apiUrl.indexOf(hostListChain1023[1]) < 0) &&
-        (apiUrl.indexOf(hostListChain1023[2]) < 0) &&
-        (apiUrl.indexOf(hostListChain1023[3]) < 0)
-    ) ? 1023 : 1024;
+  const self = this;
+  const iost = new Iost.IOST({
+    gasRatio: 1,
+    gasLimit: 1000000,
+    delay: 0,
+    expiration: 90,
+    defaultLimit: "1000"
+  });
 
-    // let tokenSym = Date.now().toString();
-    // tokenSym = "t" + tokenSym.substr(tokenSym.length - 4);
-    iost.setRPC(new Iost.RPC(new Iost.HTTPProvider(apiUrl, 4444)));
-    iost.setAccount(new Iost.Account("empty"));
-    
-    this.makeSignature = (json) => Iost.Signature.fromJSON(json);
-    this.newKeyPair = () => Iost.KeyPair.newKeyPair();
-    this.amountOf = (value, token) => {
-        token = token || "iost";
-        value = value || 0;
-        value = value.toString();
-        return {token, value};
-    };
-    this.getAccount = (name, kp) => {
-        const result = new Iost.Account(name);
-        if (kp) {
-            result.addKeyPair(kp, "owner");
-            result.addKeyPair(kp, "active");
-        }
-        return result;
-    };
-    this.newAccount = (name, creator, pubKey, initialRAM, initialGasPledge) => {
-        const prefix = Date.now().toString();
+  iost.setRPC(new Iost.RPC(new Iost.HTTPProvider(apiUrl, 55555)));
+  iost.setAccount(new Iost.Account("empty"));
 
-        initialRAM = initialRAM || 0;
-        initialGasPledge = initialGasPledge || 0;
-        result = iost.newAccount(
-            "u" + prefix.substr(prefix.length - 8) + name,
-            creator,
-            pubKey,
-            pubKey,
-            initialRAM,
-            initialGasPledge
+  chainId = chainId || (
+    (apiUrl.indexOf(hostListChain1023[1]) < 0) &&
+    (apiUrl.indexOf(hostListChain1023[2]) < 0) &&
+    (apiUrl.indexOf(hostListChain1023[3]) < 0)
+  ) ? 1023 : 1024;
+
+  this.TOKEN_NAME = "iost";
+  this.TOKEN_TAG = "token." + this.TOKEN_NAME;
+  this.TRX_CONTRACT_AUTH = "auth.iost";
+  this.TRX_METHOD_SIGNUP = "signUp";
+  this.STATUS_CODE_SUCCESS = "SUCCESS";
+
+  this.arrayToBase58 = (array) => Iost.Bs58.encode(array);
+  this.base58ToArray = (str) => Iost.Bs58.decode(str);
+  this.createSignature = (json) => Iost.Signature.fromJSON(json);
+  this.makeSignature = (bytes, keyPair) => new Iost.Signature(bytes, keyPair);
+  this.createKeyPair = () => Iost.KeyPair.newKeyPair();
+  this.makeKeyPair = (secret) => new Iost.KeyPair(secret);
+  this.amountOf = (value, token) => {
+    token = token || self.TOKEN_NAME;
+    value = value || 0;
+    value = value.toString();
+    return {token, value};
+  };
+  this.getBalance = async (userName, token) => {
+    return await iost.currentRPC.blockchain.getBalance(userName, token || self.TOKEN_NAME);
+  };
+  this.login = (userName, key) => {
+    const keyPair = new Iost.KeyPair(Iost.Bs58.decode(key));
+    const account = self.makeAccount(userName, keyPair);
+    iost.setAccount(account);
+      return account;
+    };
+    this.makeAccount = (userName, keyPair) => {
+      const account = new Iost.Account(userName);
+      if (keyPair) {
+        account.addKeyPair(keyPair, "owner");
+        account.addKeyPair(keyPair, "active");
+      }
+      return account;
+    };
+    this.newAccount = (nameSuffix, creator, pubKey, initialRAM, initialGasPledge) => {
+      const prefix = Date.now().toString();
+      const trx = iost.newAccount(
+        "u" + prefix.substr(prefix.length - 8) + nameSuffix,
+        creator,
+        pubKey,
+        pubKey,
+        initialRAM || 0,
+        initialGasPledge || 0
+      );
+      trx.addApprove(self.TOKEN_NAME, +10 + (initialGasPledge || 0));
+      return trx;
+    };
+    this.newTranfer = (from, to, amount, memo, token) => {
+      token = token || self.TOKEN_NAME;
+      memo = memo || "";
+      amount = amount.toString();
+
+      const trx = iost.callABI(self.TOKEN_TAG, "transfer", [token, from, to, amount, memo]);
+      trx.addApprove(token, amount);
+      return trx;
+    };
+    this.getTxInfo = (trx) => {
+      const filterBy = (array, key, value) => array.filter(x => x[key] === value);
+      const findAction = (action) => filterBy(trx.actions, "actionName", action);
+      const findReceipt = (funcName) => filterBy(trx.receipts, "func_name", funcName);
+      return {
+        findSignUpInActions: () => JSON.parse(findAction(self.TRX_METHOD_SIGNUP)[0].data),
+        findSignUpInReceipts: () => JSON.parse(findReceipt(self.TRX_CONTRACT_AUTH + "/" + self.TRX_METHOD_SIGNUP)[0].content)
+      };
+    };
+    this.commitTx = async (trx, publisher) => {
+      trx.setTime(iost.config.expiration, iost.config.delay, iost.serverTimeDiff);
+
+      if (trx.chain_id !== chainId) {
+        trx.setChainID(chainId);
+      }
+      if (publisher === undefined) {
+        iost.currentAccount.signTx(trx);
+      } else if (publisher instanceof Iost.Account) {
+        publisher.signTx(trx);
+      } else {
+        const algorithm = Iost.Algorithm.Ed25519;
+        const pubkey = publisher.pubKey;
+        const sig = await publisher.sign(trx._publish_hash());
+        const signature = Object.assign(
+          new Iost.Signature,
+          {algorithm, pubkey, sig}
         );
-        result.addApprove("iost", +10);
+        trx.publisher = publisher.name;
+        trx.publisher_sigs.push(signature);
+      }
 
-        return result;
-        // parent.signTx(tx);
-        // console.log("Tx: ", tx);
-        // console.dir(tx);
+      let answer = await iost.currentRPC.transaction.sendTx(trx);
+      let hash = answer.hash;
 
-        // const handler = new IOST.TxHandler(tx, rpc);
-        // handler
-        //     .onFailed((response) => {
-        //     console.error('Tx failed:', response);
-        //         console.dir(response);
-        // })
-        //     .onSuccess((response) => {
-        //         console.log("Success... tx, receipt: "+ JSON.stringify(response));
-        //         accountList[0] = new IOST.Account(myid);
-        //         accountList[0].addKeyPair(kp, "owner");
-        //         accountList[0].addKeyPair(kp, "active");
-        //     })
-        //     .send()
-        //     .listen(1000, 5);
-        // console.log('IOST.TxHandler-70');
-        // return checkHandler(handler);
-    };
-    this.login = (name, key) => {
-        const kp = new Iost.KeyPair(Iost.Bs58.decode(key));
-        const result = self.getAccount(name, kp);
-        iost.setAccount(result);
-        return result;
-    };
-    this.tranfer = (from, to, amount, asset) => {
-        const token = asset || "iost";
-        const result = iost.callABI("iost.token", "transfer", [token, from, to, amount]);
-        result.addApprove(token, amount);
-        return result;
-
-        // accountList[0].signTx(tx);
-        // const handler = new IOST.TxHandler(tx, rpc);
-        // handler
-        //     .onSuccess(async function (response) {
-        //         console.log("Success... tx, receipt: "+ JSON.stringify(response));
-        //         let accountInfo = await rpc.blockchain.getAccountInfo(myid, false);
-        //         Assert.notEqual(JSON.stringify(accountInfo).indexOf(`{"id":"IOST1234","is_key_pair":true,"weight":"1","permission":""}`), -1)
-        //     })
-        //     .send()
-        //     .listen(1000, 10);
-        // console.log('IOST.TxHandler-117');
-        // return checkHandler(handler);
-    };
-    this.getTransactionSignUpReceipt = (trx) => JSON.parse(
-        trx.receipts.filter(x => x.func_name === "auth.iost/signUp")[0].content
-    );
-    this.getTransactionBytes = (trx) => trx._bytes(1);
-
-    this.broadcast = async (transaction) => {
-        // const handler = new Iost.TxHandler(transaction, iost.currentRPC);
-        // const context = {
-        //     data: undefined,
-        //     error: undefined
-        // };
-
-        transaction.setTime(iost.config.expiration, iost.config.delay, iost.serverTimeDiff);
-
-        if (transaction.chain_id !== chainId) {
-            transaction.setChainID(chainId);
+      for (let i = 0; i < iost.config.expiration; i++) {
+        if (answer.status_code === self.STATUS_CODE_SUCCESS) {
+          if (i > 0) {
+            return answer;
+          }
+        } else if (answer.status_code) {
+          throw Error(answer.message);
         }
-
-        if (transaction.publisher_sigs.length === 0) {
-            iost.currentAccount.signTx(transaction);
+        await Utils.delay(i * iost.config.expiration);
+        try {
+          answer = await iost.currentRPC.transaction.getTxReceiptByTxHash(hash);
+        } catch (error) {
+          if (error instanceof Error &&
+            error.message !== "error: {\"code\":2,\"message\":\"failed to Get the receipt: not found\"}"
+          ) {
+            throw error;
+          }
         }
-        // handler
-        // .onSuccess(r => context.data = r)
-        // .onFailed(e => context.error = e)
-        // .send();
-        let answer = await iost.currentRPC.transaction.sendTx(transaction);
-        let hash = answer.hash;
-        for (let i = 0; i < iost.config.expiration; i++) {
-            if (answer.status_code === "SUCCESS") {
-                if (i > 0) {
-                    return answer; 
-                }
-            } else if (answer.status_code) {
-                throw Error(answer.message);
-            }
-            await Utils.delay(i * iost.config.expiration);
-            try {
-                answer = await iost.currentRPC.transaction.getTxReceiptByTxHash(hash);
-            } catch (error) {
-                if (error instanceof Error &&
-                    error.message !== "error: {\"code\":2,\"message\":\"failed to Get the receipt: not found\"}"
-                ) {
-                    throw error;
-                }
-            }
-        }
-        throw Error("Receipt not found for transacion " + hash);
+      }
+      throw Error("Receipt not found for trx hash " + hash);
     };
 };
-
-        // return new Promise((resolve, reject) => {
-        //     let i = 0;
-        //     let id = setInterval(() => {
-        //         console.log('listening.......................');
-        //         iost
-        //         .currentRPC
-        //         .transaction
-        //         .getTxReceiptByTxHash(hash)
-        //         .then((res) => {
-        //             if (res.status_code === "SUCCESS") {
-        //                 resolve(res);
-        //             } else if (res.status_code !== undefined) {
-        //                 reject(res);
-        //             }
-        //         }).catch(reject);
-        //         // } else if (handler.status === "success" || handler.status === "failed" || i > 10) {
-        //         //     clearInterval(id);
-        //         //     if (handler.status === "success") {
-        //         //         resolve(context.data);
-        //         //     } else {
-        //         //         reject(context.error || Error("broadcat timeout"));
-        //         //     }
-        //         // } else if (handler.status !== "idle") {
-                    
-        //         }
-        //         i++;
-        //     }, 333);
-        // });
-//let handler = iost.callABI("iost.token", "transfer", ["iost", "form", "to", "1000.000"]);
-
-//handler
-//    .onPending(console.log)
-//    .onSuccess(console.log)
-//    .onFailed(console.log)
-//    .send()
-//    .listen(); // if not listen, only onPending or onFailed (at sending tx) will be called

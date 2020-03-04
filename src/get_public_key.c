@@ -228,7 +228,7 @@ void get_pk(
     const uint8_t p2,
     uint8_t* output
 ) {
-    uint8_t pk[PUBLIC_KEY_SIZE] = {};
+    uint8_t pk[ED25519_KEY_SIZE] = {};
 
     if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
         PRINTF("%d != P1_CONFIRM || %d != P1_SILENT\n", p1, p1);
@@ -241,17 +241,17 @@ void get_pk(
         THROW(SW_INTERNAL_ERROR);
     }
 
-    context.pk_length = PUBLIC_KEY_SIZE;
+    context.pk_length = ED25519_KEY_SIZE;
     public_key_to_bytes(&context.public_key, pk);
     PRINTF("The public key generated: %.*H\n", context.pk_length, pk);
 
     // Put Key bytes in APDU buffer
     switch (p2) {
     case P2_HEX:
-        context.pk_length = bin2hex(output, pk, PUBLIC_KEY_SIZE);
+        context.pk_length = bin2hex(output, pk, ED25519_KEY_SIZE);
         break;
     case P2_BASE58:
-        context.pk_length = encode_base_58(pk, PUBLIC_KEY_SIZE, output);
+        context.pk_length = encode_base_58(pk, ED25519_KEY_SIZE, output);
         break;
     default:
         os_memmove(output, pk, context.pk_length);
@@ -270,7 +270,7 @@ void handle_get_public_key(
 ) {
     // Read BIP32 path
     uint32_t bip_32_path[BIP32_PATH_LENGTH];
-    const uint8_t bip_32_length = io_read_bip32(buffer, buffer_length, bip_32_path);
+    const uint16_t bip_32_length = io_read_bip32(buffer, buffer_length, bip_32_path);
 
     // Populate context with PK
     get_pk(bip_32_path, bip_32_length, p1, p2, G_io_apdu_buffer + *tx);

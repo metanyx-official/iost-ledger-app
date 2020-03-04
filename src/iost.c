@@ -7,10 +7,10 @@
 #include <cx.h>
 
 #define HBAR 100000000
-#define HASH_SHA3_SIZE PUBLIC_KEY_SIZE
+#define HASH_SHA3_SIZE ED25519_KEY_SIZE
 
-void iost_transaction_add_action(struct _Transaction* tx, const char* contract, const char* abi, const void* data)
-{
+//void iost_transaction_add_action(struct _Transaction* tx, const char* contract, const char* abi, const void* data)
+//{
 //    Action act = new Action();
 //       act.contract = contract;
 //       act.action_name = abi;
@@ -18,7 +18,7 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 //       Gson gson = new Gson();
 //       act.data = gson.toJson(data);
 //       this.actions.add(act);
-}
+//}
 
 
 //static int init_public_key(cx_ecfp_private_key_t* private_key, cx_ecfp_public_key_t* public_key)
@@ -50,7 +50,7 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 //    dataBuffer += 1 + bip32Len * 4;
 //    dataLength -= 1 + bip32Len * 4;
 
-//    if (derive_private_key(&privateKey, bip32, bip32Len) == BIP32_KEY_SIZE) {
+//    if (derive_private_key(&privateKey, bip32, bip32Len) == ED25519_KEY_SIZE) {
 //        init_public_key(&privateKey, &publicKey, keyBuffer);
 //        os_memset(&privateKey, 0, sizeof(cx_ecfp_private_key_t));
 //    }
@@ -58,7 +58,7 @@ void iost_transaction_add_action(struct _Transaction* tx, const char* contract, 
 
 uint16_t iost_derive_keypair(
     const uint32_t * const bip_32_path,
-    const int bip_32_length,
+    const uint16_t bip_32_length,
     cx_ecfp_256_private_key_t* secret_key,
     cx_ecfp_256_public_key_t* public_key
 ) {
@@ -67,7 +67,7 @@ uint16_t iost_derive_keypair(
     cx_ecfp_private_key_t s_k = {};
     cx_ecfp_public_key_t* ppk = &p_k;
     cx_ecfp_private_key_t* psk = &s_k;
-    uint8_t private_key[BIP32_KEY_SIZE] = {};
+    uint8_t private_key[ED25519_KEY_SIZE] = {};
     // uint32_t bip_32_path[BIP32_PATH_LENGTH] = {
     //     IOST_NET_TYPE | BIP32_PATH_MASK,
     //     IOST_COIN_ID | BIP32_PATH_MASK,
@@ -91,14 +91,14 @@ uint16_t iost_derive_keypair(
 //    os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip_32_path, bip_32_length, privateKeyData, NULL, (unsigned char*) "ed25519 seed", 12);
     os_perso_derive_node_bip32_seed_key(HDW_ED25519_SLIP10, CX_CURVE_Ed25519, bip_32_path, bip_32_length, private_key, NULL, NULL, 0);
 #endif
-    PRINTF("Private key derived: %.*H\n", BIP32_KEY_SIZE, private_key);
+    PRINTF("Private key derived: %.*H\n", ED25519_KEY_SIZE, private_key);
     io_seproxyhal_io_heartbeat();
 
-    if (cx_ecfp_init_private_key(CX_CURVE_Ed25519, private_key, BIP32_KEY_SIZE, psk) > 0) {
+    if (cx_ecfp_init_private_key(CX_CURVE_Ed25519, private_key, ED25519_KEY_SIZE, psk) > 0) {
         if (cx_ecfp_init_public_key(CX_CURVE_Ed25519, NULL, 0, ppk) == 0) {
             result = cx_ecfp_generate_pair(CX_CURVE_Ed25519, ppk, psk, 1);
 
-            os_memset(private_key, 0, BIP32_KEY_SIZE);
+            os_memset(private_key, 0, ED25519_KEY_SIZE);
             if (secret_key == NULL) {
                 os_memset(&s_k, 0, sizeof(s_k));
             }
@@ -116,7 +116,7 @@ void iost_derive_keypair_old(
     /* out */ cx_ecfp_private_key_t* secret_key,
     /* out */ cx_ecfp_public_key_t* public_key)
 {
-    static uint8_t seed[BIP32_KEY_SIZE];
+    static uint8_t seed[ED25519_KEY_SIZE];
     static uint32_t path[BIP32_PATH_LENGTH + 2];
     static cx_ecfp_private_key_t pk;
 
@@ -170,38 +170,52 @@ void iost_derive_keypair_old(
 uint16_t iost_sign(
     const uint32_t* const bip_32_path,
     const int bip_32_length,
-    const uint8_t* const trx_body,
-    const uint8_t trx_lengtn,
+    const uint8_t* const trx_hash,
+    const uint8_t hash_length,
+//    const uint8_t* const trx_body,
+//    const uint8_t trx_lengtn,
     uint8_t* result
 ) {
-    cx_sha3_t sha3 = {};
-    cx_ecfp_private_key_t pk = {};
-    uint8_t trx_hash[HASH_SHA3_SIZE] = {};
-    const uint16_t hash_length = cx_hash((cx_hash_t*)(&sha3), CX_LAST, trx_body, trx_lengtn, trx_hash, HASH_SHA3_SIZE);
+//    cx_sha3_t sha3 = {};
+    cx_ecfp_private_key_t sk = {};
+//    uint8_t trx_hash[HASH_SHA3_SIZE] = {};
     uint16_t signature_length = 0;
+//    PRINTF("Hashing trx %.*H\n", trx_lengtn, trx_body);
 
-    // Get Keys
-    if (hash_length != 0 && iost_derive_keypair(bip_32_path, bip_32_length, &pk, NULL) == 0) {
-        // Sign Transaction
-        // <cx.h> 2283
-        // Claims to want Hashes, but other apps use the message itself
-        // and complain that the documentation is wrong
-        signature_length = (uint16_t)cx_eddsa_sign(
-            &pk,                // private key
-            0,                  // mode (UNSUPPORTED)
-            CX_SHA256,          // hashID
-            trx_hash,           // hash (really message)
-            hash_length,        // hash length (really message length)
-            NULL,               // context (UNUSED)
-            0,                  // context length (0)
-            result,             // signature
-            HASH_SHA3_SIZE * 2, // signature length
-            NULL                // info
-        );
-        // Clear private key
-        os_memset(&pk, 0, sizeof(cx_ecfp_private_key_t));
-    }
+//    if (cx_keccak_init(&sha3, 256) != 0) {
+//        const uint16_t hash_length = cx_hash((cx_hash_t*)(&sha3), CX_LAST, trx_body, trx_lengtn, trx_hash, HASH_SHA3_SIZE);
+        PRINTF("The trx hash is %.*H\n", hash_length, trx_hash);
+        // Get Keys
+        if (hash_length != 0 && iost_derive_keypair(bip_32_path, bip_32_length, &sk, NULL) == 0) {
+PRINTF("----------->\n");
+            // Sign Transaction
+            // <cx.h> 2283
+            // Claims to want Hashes, but other apps use the message itself
+            // and complain that the documentation is wrong
+#if CX_APILEVEL >= 8
+            signature_length = cx_eddsa_sign(&sk, CX_LAST, CX_SHA512, trx_hash, hash_length, NULL, 0, result, HASH_SHA3_SIZE * 2, NULL);
+#else
+            signature_length = cx_eddsa_sign(&sk, NULL, CX_LAST, CX_SHA512, trx_hash, hash_length, result);
+#endif
 
+//            signature_length = (uint16_t)cx_eddsa_sign(
+//                &sk,                // private key
+//                0,                  // mode (UNSUPPORTED)
+//                CX_SHA256,          // hashID
+//                trx_hash,           // hash (really message)
+//                hash_length,        // hash length (really message length)
+//                NULL,               // context (UNUSED)
+//                0,                  // context length (0)
+//                result,             // signature
+//                HASH_SHA3_SIZE * 2, // signature length
+//                NULL                // info
+//            );
+PRINTF("!!!!!!!!!!\n");
+            // Clear private key
+            os_memset(&sk, 0, sizeof(sk));
+        }
+//    }
+    PRINTF("Signature: %.*H\n", signature_length, result);
     return signature_length;
 }
 
@@ -209,12 +223,12 @@ void public_key_to_bytes(
     const cx_ecfp_public_key_t* public_key,
     uint8_t* dst
 ) {
-    for (int i = 0; i < PUBLIC_KEY_SIZE; i++) {
-        dst[i] = public_key->W[PUBLIC_KEY_SIZE * 2 - i];
+    for (int i = 0; i < ED25519_KEY_SIZE; i++) {
+        dst[i] = public_key->W[ED25519_KEY_SIZE * 2 - i];
     }
 
-    if (public_key->W[PUBLIC_KEY_SIZE] & 1) {
-        dst[PUBLIC_KEY_SIZE - 1] |= 0x80;
+    if (public_key->W[ED25519_KEY_SIZE] & 1) {
+        dst[ED25519_KEY_SIZE - 1] |= 0x80;
     }
 }
 

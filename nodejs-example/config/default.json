@@ -4,8 +4,8 @@
             "url": "https://test.api.iost.io"
         },
         "account": {
-            "name": "ledger_000",
-            "key": "4qHLYxWchYpvqiV3E2BT7p7wEKLAcQAeM7rMMvgjLhEts45FZcVKTztSJCsizNzxR2sfCNinXAFx7d9Yov7eDcJa"
+            "name": "ledger_001",
+            "key": "4ofCeYDjgxEHurvg1sj4Z1134n4d9sg9bnezkidFXVpEK6iCp2Urwv83syhBwjE7QfAE4hJ2Sf7z12JSY3pecpS5"
         }
     },
     "ledger": {

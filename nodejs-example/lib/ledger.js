@@ -15,11 +15,12 @@ module.exports = function(appName, transport) {
     INS_GET_CONFIGURATION: 0x02,
     INS_GET_PUBLIC_KEY: 0x04,
     INS_SIGN_TRANSACTION: 0x08,
+    INS_SIGN_TRX_HASH: 0x16,
   }
 
-   if (Utils.debugging) {
+  if (Utils.debugging) {
     Logs.listen(console.log);
-   }
+  }
     
   this.open = async () => {
     let t = null;
@@ -92,14 +93,14 @@ module.exports = function(appName, transport) {
       bin: new Uint8Array(data.slice(0, -3))
     };
   };
-  this.signTransaction = async (path, trx) => {
+  this.signTransaction = async (path, trxHash) => {
        const buffer = Utils.bufferFromBip32(path);
        const data = await this.transport.send(
          APDU.CLA,
-         APDU.INS_SIGN_TRANSACTION,
+         APDU.INS_SIGN_TRX_HASH,
          1,
          0,
-         Buffer.concat([buffer, trx])
+         Buffer.concat([buffer, trxHash])
        );
        return data.slice(0, -2);
   };

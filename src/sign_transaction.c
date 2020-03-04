@@ -1063,29 +1063,31 @@ void handle_sign_transaction(
     // Read BIP32 path
     PRINTF("1Signing...%u bytes\n", buffer_length);
     uint32_t bip_32_path[BIP32_PATH_LENGTH];
-    const uint8_t bip_32_length = io_read_bip32(buffer, buffer_length, bip_32_path);
+    const uint16_t bip_32_length = io_read_bip32(buffer, buffer_length, bip_32_path);
     PRINTF("BIP32. length. %u\n", bip_32_length);
     
     // Raw Tx
-    uint8_t raw_transaction_body[MAX_TX_SIZE];
-    const uint16_t raw_transaction_length = buffer_length - bip_32_length;
+    uint8_t trx_body[MAX_TX_SIZE];
+    const uint16_t trx_length = buffer_length - bip_32_length * sizeof(uint32_t) - 1;
+    const uint16_t trx_offset = buffer_length - trx_length;
 
-    PRINTF("Raw Tx Length. %u\n", raw_transaction_length);
+    PRINTF("Raw Tx Length: %u\n", trx_length);
+    PRINTF("Raw Tx: %.*H\n", trx_length, buffer + trx_offset);
 
     // Oops Oof Owie
-    if (raw_transaction_length > MAX_TX_SIZE) {
+    if (trx_length > MAX_TX_SIZE) {
         THROW(SW_WRONG_LENGTH);
     }
 
-    // copy raw transaction
-    os_memmove(raw_transaction_body, (buffer + bip_32_length), raw_transaction_length);
+    // copy transaction
+    os_memmove(trx_body, buffer + trx_offset, trx_length);
 
     // Sign Transaction
     context.signature_length = iost_sign(
         bip_32_path,
         bip_32_length,
-        raw_transaction_body,
-        raw_transaction_length,
+        trx_body,
+        trx_length,
         G_io_apdu_buffer
     );
 

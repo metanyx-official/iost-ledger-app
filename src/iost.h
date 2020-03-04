@@ -6,19 +6,20 @@
 
 #define IOST_NET_TYPE 44
 #define IOST_COIN_ID 291
-#define PUBLIC_KEY_SIZE 32
+//#define PUBLIC_KEY_SIZE 32
+#define ED25519_KEY_SIZE 32
 
-struct _Transaction;
+//struct _Transaction;
 
 // Forward declare to avoid including os.h in a header file
 struct cx_ecfp_256_private_key_s;
 struct cx_ecfp_256_public_key_s;
 
-void iost_transaction_add_action(struct _Transaction *tx, const char *contract, const char *abi, const void *data);
+//void iost_transaction_add_action(struct _Transaction *tx, const char *contract, const char *abi, const void *data);
 
 extern uint16_t iost_derive_keypair(
     const uint32_t * const bip_32_path,
-    const int bip_32_length,
+    const uint16_t bip_32_length,
     /* out */ struct cx_ecfp_256_private_key_s* secret_key,
     /* out */ struct cx_ecfp_256_public_key_s* public_key
 );

@@ -72,6 +72,7 @@ void app_main() {
                         handle_get_public_key(p1, p2, buffer, length, &flags, &tx);
                         break;
                     case INS_SIGN_TRANSACTION:
+                    case INS_SIGN_TRX_HASH:
                         handle_sign_transaction(p1, p2, buffer, length, &flags, &tx);
                         break;
                     case INS_RETURN_TO_DASHBOARD:
@@ -83,9 +84,11 @@ void app_main() {
                 }
             }
             CATCH(EXCEPTION_IO_RESET) {
+                PRINTF("resetting\n");
                 THROW(EXCEPTION_IO_RESET);
             }
             CATCH_OTHER(e) {
+                PRINTF("clearing on %u\n", e);
                 clear_context_get_configuration();
                 clear_context_get_public_key();
                 clear_context_sign_transaction();

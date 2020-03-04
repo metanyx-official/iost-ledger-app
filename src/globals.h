@@ -15,6 +15,7 @@
 
 // CLA <INS> <-- Command Line Argument <Instruction>
 #define INS_RETURN_TO_DASHBOARD 0xFF
+#define INS_SIGN_TRX_HASH 0x16
 #define INS_SIGN_TRANSACTION 0x08
 #define INS_GET_PUBLIC_KEY 0x04
 #define INS_GET_CONFIGURATION 0x02

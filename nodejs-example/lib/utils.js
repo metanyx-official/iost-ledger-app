@@ -140,13 +140,56 @@ const bufferToHex = (buffer) => {
     .join("");
 };
 
+const hexStringToArray = (hexStr) => {
+//    var result = [];
+//    while (str.length >= 8) {
+//      result.push(parseInt(str.substring(0, 8), 16));
+//      str = str.substring(8, str.length);
+//    }
+//    return result;
+  if (!hexStr) {
+    return new Uint8Array();
+  }
+  var array = [];
+  for (var i = 0, length = hexStr.length; i < length; i += 2) {
+    array.push(parseInt(hexStr.substr(i, 2), 16));
+  }
+  return new Uint8Array(array);
+}
+
+const arrayToHexString = (uint8arr) => {
+//    let result = "";
+//    let z;
+//    for (var i = 0; i < arr.length; i++) {
+//      let str = arr[i].toString(16);
+//      z = 8 - str.length + 1;
+//      str = Array(z).join("0") + str;
+//      result += str;
+//    }
+//    return result;
+  if (!uint8arr) {
+    return "";
+  }
+
+  let hexStr = '';
+  for (let i = 0; i < uint8arr.length; i++) {
+    var hex = (uint8arr[i] & 0xff).toString(16);
+    hex = (hex.length === 1) ? "0" + hex : hex;
+    hexStr += hex;
+  }
+
+  return hexStr.toUpperCase();
+}
+
 module.exports = { 
   debugging,
   delay,
   fail,
   bufferFromBip32,
   callAsync,
-  bufferToHex
+  bufferToHex,
+  hexStringToArray,
+  arrayToHexString
 };
 
 
