@@ -25,6 +25,7 @@ void handle_get_configuration(
     G_io_apdu_buffer[(*tx)++] = APPVERSION_N;
     G_io_apdu_buffer[(*tx)++] = APPVERSION_P;
 
+    clear_context_get_configuration();
     THROW(SW_OK);
 //    io_set_status(SW_OK, flags, tx);
 }

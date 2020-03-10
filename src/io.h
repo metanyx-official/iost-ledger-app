@@ -9,7 +9,7 @@
 #define BIP32_PATH_MASK 0x80000000
 #define BIP32_PATH_LENGTH APDU_MAX_SIZE
 //#define FULL_ADDRESS_LENGTH 54
-#define MAX_TX_SIZE 512
+#define MAX_MSG_SIZE 512
 
 extern uint16_t io_read_bip32(
     const uint8_t* buffer,

@@ -89,26 +89,35 @@ const BipPath = require("bip32-path");
 //     }).join(""));
 //   }  
 
-const debugging = () => {
-  return process.env.NODE_ENV === "development";
+function debugOrNot(d, p) {
+  if (process.env.NODE_ENV === "production") {
+    return p;
+  }
+  if (process.env.NODE_ENV === "development") {
+    return d;
+  }
+  return d;
 };
 
-const delay = (ms) => {
+function delay(ms) {
   return new Promise(function(resolve) {
-      setTimeout(resolve, ms || 1000);
+    setTimeout(resolve, ms || 1000);
   });
 };
 
-const fail = (e) => {
-  console.error("App crashed (" + e + ")");
-  if (e instanceof Error) {
-    console.error(e.stack);
+function fail(error) {
+  if (error instanceof Error) {
+    console.error("App crashed -", error.message);
+    console.error(error.stack);
+  } else {
+    console.error("Unhandled error", error);
+    process.exit(2);
   }
   process.exit(1);
 };
 
 
-const bufferFromBip32 = (path) => {
+function bufferFromBip32(path) {
   const paths = path ? BipPath.fromString(path).toPathArray() : [];
   const result = Buffer.alloc(1 + paths.length * 4);
   result[0] = paths.length;
@@ -118,7 +127,7 @@ const bufferFromBip32 = (path) => {
   return result;
 };
 
-const callAsync = (func, args) => {
+function callAsync(func, args) {
   return new Promise((resolve, reject) => {
     func().then(function() {
       if (args === undefined) {
@@ -133,31 +142,31 @@ const callAsync = (func, args) => {
   });
 };
 
-const bufferToHex = (buffer) => {
-  return Array
+function bufferToHex(buffer) {
+  return buffer ? Array
     .from(new Uint8Array(buffer))
     .map(b => b.toString(16).padStart (2, "0"))
-    .join("");
+    .join("") : "";
 };
 
-const hexStringToArray = (hexStr) => {
+function hexToArray(hex) {
 //    var result = [];
 //    while (str.length >= 8) {
 //      result.push(parseInt(str.substring(0, 8), 16));
 //      str = str.substring(8, str.length);
 //    }
 //    return result;
-  if (!hexStr) {
+  if (!hex) {
     return new Uint8Array();
   }
   var array = [];
-  for (var i = 0, length = hexStr.length; i < length; i += 2) {
-    array.push(parseInt(hexStr.substr(i, 2), 16));
+  for (var i = 0, length = hex.length; i < length; i += 2) {
+    array.push(parseInt(hex.substr(i, 2), 16));
   }
   return new Uint8Array(array);
 }
 
-const arrayToHexString = (uint8arr) => {
+function arrayToHex(array) {
 //    let result = "";
 //    let z;
 //    for (var i = 0; i < arr.length; i++) {
@@ -167,29 +176,50 @@ const arrayToHexString = (uint8arr) => {
 //      result += str;
 //    }
 //    return result;
-  if (!uint8arr) {
-    return "";
+  let str = "";
+  if (array.length > 0) {
+      for (let i = 0; i < array.length; i++) {
+        let hex = (array[i] & 0xff).toString(16);
+        hex = (hex.length === 1) ? "0" + hex : hex;
+        str += hex;
+      }
   }
+  return str;
+}
 
-  let hexStr = '';
-  for (let i = 0; i < uint8arr.length; i++) {
-    var hex = (uint8arr[i] & 0xff).toString(16);
-    hex = (hex.length === 1) ? "0" + hex : hex;
-    hexStr += hex;
+function wordToArray(word) {
+  if (word > 65535) {
+    throw new RangeError("word must less 65535");
   }
+  return new Uint8Array([
+    (word >> 8) & 0xFF,
+    word & 0xFF
+  ]);
+}
 
-  return hexStr.toUpperCase();
+function arrayToWord(array) {
+  if (array.length !== 2) {
+    throw new RangeError("array.length must be 2");
+  }
+  return (array[0] << 8) | array[1];
+};
+
+function cloneInstance(obj) {
+  return Object.assign(Object.create(Object.getPrototypeOf(obj)), obj);
 }
 
 module.exports = { 
-  debugging,
+  debugOrNot,
   delay,
   fail,
   bufferFromBip32,
   callAsync,
   bufferToHex,
-  hexStringToArray,
-  arrayToHexString
+  hexToArray,
+  arrayToHex,
+  wordToArray,
+  arrayToWord,
+  cloneInstance
 };
 
 

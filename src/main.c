@@ -6,6 +6,12 @@
 #include "utils.h"
 #include "debug.h"
 
+void clear_all_contexts()
+{
+    clear_context_get_configuration();
+    clear_context_get_public_key();
+    clear_context_sign_message();
+}
 // This is the main loop that reads and writes APDUs. It receives request
 // APDUs from the computer, looks up the corresponding command handler, and
 // calls it on the APDU payload. Then it loops around and calls io_exchange
@@ -22,6 +28,8 @@ void app_main() {
     volatile uint16_t tx = 0;
     volatile uint8_t flags = 0;
 
+    clear_all_contexts();
+
     for (;;) {
         volatile uint16_t sw = 0;
 
@@ -29,7 +37,7 @@ void app_main() {
             TRY {
                 rx = tx;
                 tx = 0; // ensure no race in catch_other if io_exchange throws an error
-                PRINTF("Ex%u %u/%u bytes with flags %u\n", sw, rx, tx, flags);
+                PRINTF("Exchange with status %u, rx/tx %u/%u and flags %u\n", sw, rx, tx, flags);
                 rx = io_exchange(CHANNEL_APDU | flags, rx);
                 flags = 0;
 
@@ -42,12 +50,12 @@ void app_main() {
                     // APDU handler functions defined in handlers
                     const uint8_t p1 = G_io_apdu_buffer[OFFSET_P1];
                     const uint8_t p2 = G_io_apdu_buffer[OFFSET_P2];
-                    const uint8_t* buffer = G_io_apdu_buffer + OFFSET_CDATA;
                     const uint16_t length = G_io_apdu_buffer[OFFSET_LC];
+                    const uint8_t* buffer = G_io_apdu_buffer + OFFSET_CDATA;
 
-                    PRINTF("New APDU request:\n%.*H\n", length, G_io_apdu_buffer);
+                    PRINTF("New APDU/%u/%u request(%u): %.*H\n", p1, p2, length, length, G_io_apdu_buffer);
 
-                    if (length == 0) {
+                    if ((length == 0) && !(p2 & P2_MORE)) {
                         PRINTF("empty BIP32 path\n");
                         THROW(SW_WRONG_LENGTH);
                     }
@@ -71,9 +79,8 @@ void app_main() {
                     case INS_GET_PUBLIC_KEY:
                         handle_get_public_key(p1, p2, buffer, length, &flags, &tx);
                         break;
-                    case INS_SIGN_TRANSACTION:
-                    case INS_SIGN_TRX_HASH:
-                        handle_sign_transaction(p1, p2, buffer, length, &flags, &tx);
+                    case INS_SIGN_MESSAGE:
+                        handle_sign_message(p1, p2, buffer, length, &flags, &tx);
                         break;
                     case INS_RETURN_TO_DASHBOARD:
                         goto return_to_dashboard;
@@ -84,23 +91,23 @@ void app_main() {
                 }
             }
             CATCH(EXCEPTION_IO_RESET) {
-                PRINTF("resetting\n");
+                PRINTF("Resetting\n");
                 THROW(EXCEPTION_IO_RESET);
             }
             CATCH_OTHER(e) {
-                PRINTF("clearing on %u\n", e);
-                clear_context_get_configuration();
-                clear_context_get_public_key();
-                clear_context_sign_transaction();
+                PRINTF("Clearing on %u\n", e);
+
                 // Convert exception to response code and add to APDU return
                 switch (e & 0xF000) {
-                    case 0x6000:
-                    case 0x9000:
-                        sw = e;
-                        break;
-                    default:
-                        sw = 0x6800 | (e & 0x7FF);
-                        break;
+                case 0x6000:
+                    clear_all_contexts();
+                case 0x9000:
+                    sw = e;
+                    break;
+                default:
+                    clear_all_contexts();
+                    sw = 0x6800 | (e & 0x7FF);
+                    break;
                 }
                 io_set_status(sw, NULL, &tx);
             }

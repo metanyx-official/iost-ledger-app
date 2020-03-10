@@ -3575,7 +3575,7 @@
 ./src/main.c
 ./src/printf.c
 ./src/printf.h
-./src/sign_transaction.c
+./src/sign_message.c
 ./src/ui.c
 ./src/ui.h
 ./src/uint256.c

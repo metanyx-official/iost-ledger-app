@@ -29,13 +29,21 @@ extern uint16_t iost_sign(
     const int bip_32_length,
     const uint8_t* tx,
     uint8_t tx_len,
-    /* out */ uint8_t* result
+    uint8_t* signature
 );
 
-extern void public_key_to_bytes(
-    const struct cx_ecfp_256_public_key_s* public_key,
-    /* out */ uint8_t* dst
+extern uint16_t iost_hash_bytes(
+    const uint8_t * const in_bytes,
+    const uint16_t in_length,
+    uint8_t* hash_out
 );
+
+extern void iost_extract_bytes_from_public_key(
+    const struct cx_ecfp_256_public_key_s* public_key,
+    uint8_t* bytes_out,
+    uint16_t* key_length
+);
+
 
 //extern const char* iost_format_tinybar(const uint64_t tinybar);
 

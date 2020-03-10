@@ -134,18 +134,18 @@ static unsigned int ui_get_public_key_approve_button(
 ) {
     UNUSED(button_mask_counter);
     switch (button_mask) {
-        case BUTTON_EVT_RELEASED | BUTTON_LEFT:
-            io_exchange_status(SW_USER_REJECTED, 0);
-            ui_idle();
-            break;
+    case BUTTON_EVT_RELEASED | BUTTON_LEFT:
+        io_exchange_status(SW_USER_REJECTED, 0);
+        ui_idle();
+        break;
 
-        case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
-            io_exchange_status(SW_OK, context.pk_length + 1);
-            compare_pk();
-            break;
+    case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
+        io_exchange_status(SW_OK, context.pk_length + 1);
+        compare_pk();
+        break;
 
-        default:
-            break;
+    default:
+        break;
     }
 
     return 0;
@@ -228,8 +228,6 @@ void get_pk(
     const uint8_t p2,
     uint8_t* output
 ) {
-    uint8_t pk[ED25519_KEY_SIZE] = {};
-
     if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
         PRINTF("%d != P1_CONFIRM || %d != P1_SILENT\n", p1, p1);
         THROW(SW_INVALID_P1P2);
@@ -241,23 +239,23 @@ void get_pk(
         THROW(SW_INTERNAL_ERROR);
     }
 
-    context.pk_length = ED25519_KEY_SIZE;
-    public_key_to_bytes(&context.public_key, pk);
-    PRINTF("The public key generated: %.*H\n", context.pk_length, pk);
+    uint8_t pk[ED25519_KEY_SIZE] = {};
+    iost_extract_bytes_from_public_key(&context.public_key, pk, &context.pk_length);
+    PRINTF("Get PubKey(%u): %.*H\n", context.pk_length, context.pk_length, pk);
 
     // Put Key bytes in APDU buffer
     switch (p2) {
     case P2_HEX:
-        context.pk_length = bin2hex(output, pk, ED25519_KEY_SIZE);
+        context.pk_length = bin2hex(output, pk, context.pk_length);
         break;
     case P2_BASE58:
-        context.pk_length = encode_base_58(pk, ED25519_KEY_SIZE, output);
+        context.pk_length = encode_base_58(pk, context.pk_length, output);
         break;
     default:
         os_memmove(output, pk, context.pk_length);
         break;
     }
-    *(output + context.pk_length) = 0;
+    output[context.pk_length] = 0;
 }
 
 void handle_get_public_key(
@@ -280,12 +278,8 @@ void handle_get_public_key(
         (p2 != P2_HEX && p2 != P2_BASE58)
     ) {
         *tx += context.pk_length + 1;
-        PRINTF("Write out %.*H\n", *tx, G_io_apdu_buffer);
+        clear_context_get_public_key();
         THROW(SW_OK);
-//        io_set_status(SW_OK, flags, tx);
-//        *flags |= IO_RETURN_AFTER_TX;
-//        io_exchange(CHANNEL_APDU | IO_RETURN_AFTER_TX, tx);
-//        io_exchange_with_code(SW_OK, *tx);
     }
     // Complete "Export Public | Key #x?"
     iost_snprintf(
@@ -310,31 +304,3 @@ void clear_context_get_public_key()
      os_memset(&context, 0, sizeof(context));
 }
 
-
-//UNUSED(tx);
-
-//// Read BIP32 path
-//context.bip_32_length = io_read_bip32(buffer, size, context.bip_32_path);
-////    context.key_index = bip_32_path[bip_32_length - 1];
-//// context.key_index = U4LE(buffer, 0);
-
-//// Title for Nano X compare screen
-//iost_snprintf(context.ui_approve_l1, 40, "Public Key #%u", context.bip_32_path[context.bip_32_length - 1]);
-
-//// Complete "Export Public | Key #x?"
-//iost_snprintf(context.ui_approve_l2, 40, "Key #%u?", context.bip_32_path[context.bip_32_length - 1]);
-
-//// Populate context with PK
-//get_pk();
-
-//#if defined(TARGET_NANOS)
-
-//UX_DISPLAY(ui_get_public_key_approve, NULL);
-
-//#elif defined(TARGET_NANOX)
-
-//ux_flow_init(0, ux_compare_pk_flow, NULL);
-
-//#endif // TARGET
-
-//*flags |= IO_ASYNCH_REPLY;

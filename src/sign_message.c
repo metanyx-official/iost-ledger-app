@@ -42,6 +42,8 @@ void handle_transaction_body();
 
 #if defined(TARGET_NANOS)
 static struct sign_tx_context_t {
+    uint8_t msg_body[MAX_MSG_SIZE];
+    uint16_t msg_length;
     uint16_t signature_length;
 
     // ui common
@@ -705,6 +707,7 @@ unsigned int io_seproxyhal_tx_approve(const bagl_element_t* e);
 unsigned int io_seproxyhal_tx_reject(const bagl_element_t* e);
 
 static struct sign_tx_context_t {
+    uint8_t msg_body[MAX_TX_SIZE];
     uint16_t signature_length;
     // ui common
     uint8_t transfer_from_index;
@@ -1050,9 +1053,59 @@ void handle_transaction_body() {
 }
 #endif
 
+void read_message(
+    const uint8_t* const buffer,
+    const uint16_t buffer_length
+) {
+    if (context.msg_length + buffer_length > MAX_MSG_SIZE) {
+        PRINTF("invalid message size %u + %u > %u\n", context.msg_length, buffer_length, MAX_MSG_SIZE);
+        THROW(SW_WRONG_LENGTH);
+    }
+
+    PRINTF("Reading %u bytes\n", buffer_length);
+    if (buffer_length != 0) {
+        os_memmove(context.msg_body + context.msg_length, buffer, buffer_length);
+        context.msg_length += buffer_length;
+    }
+}
+
+void sign_message(
+    const int hash_before_sign,
+    uint8_t* signature
+) {
+    if (context.msg_length == 0) {
+        PRINTF("empty message\n");
+        THROW(SW_WRONG_LENGTH);
+    }
+    if (context.msg_length > MAX_MSG_SIZE) {
+        PRINTF("invalid message size %u > %u\n", context.msg_length, MAX_MSG_SIZE);
+        THROW(SW_WRONG_LENGTH);
+    }
+
+    // Read BIP32 path
+    uint32_t bip_32_path[BIP32_PATH_LENGTH] = {};
+    const uint16_t bip_32_length = io_read_bip32(context.msg_body, context.msg_length, bip_32_path);
+    const uint16_t msg_offset = 1 + bip_32_length * sizeof(*bip_32_path);
+    uint8_t* msg_body = context.msg_body + msg_offset;
+
+    context.msg_length -= msg_offset;
+
+    if (hash_before_sign != 0) {
+        context.msg_length = iost_hash_bytes(msg_body, context.msg_length, msg_body);
+    }
+
+    context.signature_length = iost_sign(
+        bip_32_path,
+        bip_32_length,
+        msg_body,
+        context.msg_length,
+        signature
+    );
+}
+
 // Sign Handler
 // Decodes and handles transaction message
-void handle_sign_transaction(
+void handle_sign_message(
     const uint8_t p1,
     const uint8_t p2,
     const uint8_t* const buffer,
@@ -1060,36 +1113,14 @@ void handle_sign_transaction(
     volatile uint8_t* flags,
     volatile uint16_t* tx
 ) {
-    // Read BIP32 path
-    PRINTF("1Signing...%u bytes\n", buffer_length);
-    uint32_t bip_32_path[BIP32_PATH_LENGTH];
-    const uint16_t bip_32_length = io_read_bip32(buffer, buffer_length, bip_32_path);
-    PRINTF("BIP32. length. %u\n", bip_32_length);
-    
-    // Raw Tx
-    uint8_t trx_body[MAX_TX_SIZE];
-    const uint16_t trx_length = buffer_length - bip_32_length * sizeof(uint32_t) - 1;
-    const uint16_t trx_offset = buffer_length - trx_length;
+    read_message(buffer, buffer_length);
 
-    PRINTF("Raw Tx Length: %u\n", trx_length);
-    PRINTF("Raw Tx: %.*H\n", trx_length, buffer + trx_offset);
-
-    // Oops Oof Owie
-    if (trx_length > MAX_TX_SIZE) {
-        THROW(SW_WRONG_LENGTH);
+    if ((p2 & P2_MORE) != P2_MORE || buffer_length == 0) {
+        sign_message(buffer_length == 0, G_io_apdu_buffer);
+    } else {
+        // Wait for next call
+        THROW(SW_OK);
     }
-
-    // copy transaction
-    os_memmove(trx_body, buffer + trx_offset, trx_length);
-
-    // Sign Transaction
-    context.signature_length = iost_sign(
-        bip_32_path,
-        bip_32_length,
-        trx_body,
-        trx_length,
-        G_io_apdu_buffer
-    );
 
 //    // Make in memory buffer into stream
 //    pb_istream_t stream = pb_istream_from_buffer(
@@ -1106,16 +1137,17 @@ void handle_sign_transaction(
 //        // Oh no couldn't ...
 //        THROW(EXCEPTION_MALFORMED_APDU);
 //    }
-
 //    handle_transaction_body();
 
     if (p1 != P1_CONFIRM) {
-        *tx += context.signature_length;
+        *tx += context.signature_length + 1;
+        PRINTF("Write out (%u): %.*H", *tx, *tx, G_io_apdu_buffer);
+        clear_context_sign_message();
         THROW(SW_OK);
     }
     *flags |= IO_ASYNCH_REPLY;
 }
-void clear_context_sign_transaction()
+void clear_context_sign_message()
 {
     os_memset(&context, 0, sizeof(context));
 }

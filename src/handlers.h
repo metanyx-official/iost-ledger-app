@@ -15,10 +15,10 @@ typedef void handler_fn_t(
 
 extern handler_fn_t handle_get_configuration;
 extern handler_fn_t handle_get_public_key;
-extern handler_fn_t handle_sign_transaction;
+extern handler_fn_t handle_sign_message;
 
 extern void clear_context_get_configuration();
 extern void clear_context_get_public_key();
-extern void clear_context_sign_transaction();
+extern void clear_context_sign_message();
 
 #endif // LEDGER_APP_IOST_HANDLERS_H
