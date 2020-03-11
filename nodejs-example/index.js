@@ -56,6 +56,13 @@ const test = {
   getTrxTransferReceipt: (txInfo) => txInfo.findInReceipts(iost.TRX_METHOD_TRANSFER)
 };
 
+/*****************************************************************************************************
+ * First we use predefined account 'ledger_001' with provided private key to create new account A. (Lines 73 - 85)
+ * This account uses newly generated key pair and dosn't store keys on ledger.
+ * Then we retrieve the public key from ledger and create new account B owned by account A. (Lines 86 - 102)
+ *  And finally we create account C owned by account B and sign transaction with ledger. (Lines 103 - 149)
+ *****************************************************************************************************/
+
 Utils.delay().then(ledger.open).then(async () => {
   //! Check ledger app version
   const ledgerConfig = await ledger.getConfiguration();
