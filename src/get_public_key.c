@@ -18,13 +18,11 @@
 
 static struct
 {
+    cx_ecfp_public_key_t public_key;
+    uint16_t pk_length;
     // Lines on the UI Screen
     // L1 Only used for title in Nano X compare
     char ui_approve_l2[DISPLAY_SIZE + 1];
-
-    cx_ecfp_public_key_t public_key;
-
-    uint16_t pk_length;
     // Public Key Compare
     uint8_t display_index;
     uint8_t partial_key[DISPLAY_SIZE + 1];
@@ -292,7 +290,7 @@ void handle_get_public_key(
     );
 #if defined(TARGET_NANOS)
     UX_DISPLAY(ui_get_public_key_approve, NULL);
-#else
+#elif defined(TARGET_NANOX)
     ux_flow_init(0, ux_approve_pk_flow, NULL);
 #endif // TARGET_NANOS
 
