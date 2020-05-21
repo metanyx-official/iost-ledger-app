@@ -30,6 +30,10 @@ module.exports = function(appName, transport) {
     if (index !== undefined) {
       buffer = Utils.bufferFromBip32(BIP32_PATH + "/" + index + "'");
     }
+    if (p1 == this.P1P2.CONFIRM && p2 == this.P1P2.BIN) {
+        throw Error("p2 shold be HEX or BASE58");
+    }
+
     if (data instanceof Buffer) {
       buffer = Buffer.concat([
         buffer,
@@ -46,6 +50,10 @@ module.exports = function(appName, transport) {
     ) {
       if ((p2 & this.P1P2.MORE) == this.P1P2.MORE) {
         chunk = chunk.slice(offset, offset + EXCHANGE_CHUNK_SIZE);
+      }
+
+      if (Utils.debugOrNot(true, false)) {
+        console.log("instruction:", instruction, ", p1: ", p1, ", p2: ", p2, "chunk: ", chunk);
       }
 
       data = await this.transport.send(

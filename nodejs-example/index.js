@@ -66,7 +66,7 @@ const test = {
 Utils.delay().then(ledger.open).then(async () => {
   //! Check ledger app version
   const ledgerConfig = await ledger.getConfiguration();
-  Assert.deepStrictEqual(ledgerConfig, {hasStorage: false, version: "0.0.2"});
+  Assert.deepStrictEqual(ledgerConfig, {hasStorage: false, version: "0.0.3"});
 
   //! Create new account A with software keys
   let account = iost.login(Config.iost.account.name, Config.iost.account.key);
@@ -98,6 +98,17 @@ Utils.delay().then(ledger.open).then(async () => {
   //! Transfer some coins from master to A and switch to account A
   test.checkTransfer(await iost.commitTx(iost.newTranfer(account.getID(), trxInfoA[0], 88), account));
   account = iost.makeAccount(trxInfoA[0], keyPairA);
+
+account = {
+name: trxInfoA[0],
+pubKey: pubKeyB.base58,
+sign: async (bytes) => {
+return await ledger.signMessage({
+index: 0,
+message: iost.createHash(bytes)
+});
+}
+};
 
   //! Complete B creation by A and create new account C with hardware keys
   const commitB = await iost.commitTx(trxB, account);

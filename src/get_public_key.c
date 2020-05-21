@@ -230,6 +230,10 @@ void get_pk(
         PRINTF("%d != P1_CONFIRM || %d != P1_SILENT\n", p1, p1);
         THROW(SW_INVALID_P1P2);
     }
+    if ((p1 == P1_CONFIRM) && (p2 == P2_BIN)) {
+        PRINTF("%d == P1_CONFIRM && %d == P2_BIN\n", p1, p2);
+        THROW(SW_INVALID_P1P2);
+    }
 
     // Derive key
     if (iost_derive_keypair(bip_32_path, bip_32_length, NULL, &context.public_key) != 0) {

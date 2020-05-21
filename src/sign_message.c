@@ -18,22 +18,109 @@ static struct sign_tx_context_t {
     // Lines on the UI Screen
     // L1 Only used for title in Nano X compare
     char ui_approve_l2[DISPLAY_SIZE + 1];
+    // Sign Message Compare
+    uint8_t display_index;
+    uint8_t partial_signature[DISPLAY_SIZE + 1];
 } context;
 
-static const bagl_element_t ui_tx_approve[] = {
+
+static const bagl_element_t ui_sign_message_compare[] = {
+    UI_BACKGROUND(),
+    UI_ICON_LEFT(LEFT_ICON_ID, BAGL_GLYPH_ICON_LEFT),
+    UI_ICON_RIGHT(RIGHT_ICON_ID, BAGL_GLYPH_ICON_RIGHT),
+    // <=                  =>
+    //       Signature
+    //      <partial>
+    //
+    UI_TEXT(LINE_1_ID, 0, 12, 128, "Signature"),
+    UI_TEXT(LINE_2_ID, 0, 24, 128, context.partial_signature)
+};
+
+static const bagl_element_t ui_sign_message_approve[] = {
     UI_BACKGROUND(),
     UI_ICON_LEFT(LEFT_ICON_ID, BAGL_GLYPH_ICON_CROSS),
     UI_ICON_RIGHT(RIGHT_ICON_ID, BAGL_GLYPH_ICON_CHECK),
     //
-    //    Sign Transaction
-    //       Key #123?
+    //    Sign Message
+    //      With Key #123?
     //
-    UI_TEXT(LINE_1_ID, 0, 12, 128, "Sign Transaction"),
-    UI_TEXT(LINE_2_ID, 0, 26, 128, context.ui_approve_l2),
+    UI_TEXT(LINE_1_ID, 0, 12, 128, "Sign Message"),
+    UI_TEXT(LINE_2_ID, 0, 24, 128, context.ui_approve_l2),
 };
 
 
-static unsigned int ui_tx_approve_button(
+void shift_partial_signature()
+{
+    os_memmove(
+        context.partial_signature,
+        G_io_apdu_buffer + context.display_index,
+        DISPLAY_SIZE
+    );
+}
+
+static unsigned int ui_sign_message_compare_button(
+    unsigned int button_mask,
+    unsigned int button_mask_counter
+) {
+    UNUSED(button_mask_counter);
+    switch (button_mask) {
+        case BUTTON_LEFT: // Left
+        case BUTTON_EVT_FAST | BUTTON_LEFT:
+            if (context.display_index > 0) {
+                context.display_index--;
+            }
+            shift_partial_signature();
+            UX_REDISPLAY();
+            break;
+        case BUTTON_RIGHT: // Right
+        case BUTTON_EVT_FAST | BUTTON_RIGHT:
+            if (context.display_index < context.signature_length + 1 - DISPLAY_SIZE) {
+                context.display_index++;
+            }
+            shift_partial_signature();
+            UX_REDISPLAY();
+            break;
+        case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
+            ui_idle();
+            break;
+    }
+    return 0;
+}
+
+static const bagl_element_t* ui_prepro_sign_message_compare(
+    const bagl_element_t* element
+) {
+    if (
+        (element->component.userid == LEFT_ICON_ID) &&
+        (context.display_index == 0)
+    ) {
+        return NULL; // Hide Left Arrow at Left Edge
+    }
+    if (
+        (element->component.userid == RIGHT_ICON_ID) &&
+        (context.display_index == context.signature_length + 1 - DISPLAY_SIZE)
+    ) {
+        return NULL; // Hide Right Arrow at Right Edge
+    }
+    return element;
+}
+
+void compare_signature() {
+    // init partial key str from full str
+    os_memmove(context.partial_signature, G_io_apdu_buffer, DISPLAY_SIZE);
+    context.partial_signature[DISPLAY_SIZE] = '\0';
+
+    // init display index
+    context.display_index = 0;
+
+    // Display compare with button mask
+    UX_DISPLAY(
+        ui_sign_message_compare,
+        ui_prepro_sign_message_compare
+    );
+}
+
+static unsigned int ui_sign_message_approve_button(
     unsigned int button_mask,
     unsigned int button_mask_counter
 ) {
@@ -45,10 +132,9 @@ static unsigned int ui_tx_approve_button(
         break;
 
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
-        PRINTF("Write out %u bytes", context.signature_length + 1);
-        os_memmove(G_io_apdu_buffer, context.msg_body, context.signature_length + 1);
-        clear_context_sign_message();
+        PRINTF("Compare signature (%u): %.*H", context.signature_length + 1, context.signature_length + 1, G_io_apdu_buffer);
         io_exchange_status(SW_OK, context.signature_length + 1);
+        compare_signature();
         break;
 
     default:
@@ -188,6 +274,15 @@ void handle_sign_message(
     volatile uint8_t* flags,
     volatile uint16_t* tx
 ) {
+    if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
+        PRINTF("%d != P1_CONFIRM || %d != P1_SILENT\n", p1, p1);
+        THROW(SW_INVALID_P1P2);
+    }
+    if ((p1 == P1_CONFIRM) && (p2 == P2_BIN)) {
+        PRINTF("%d == P1_CONFIRM && %d == P2_BIN\n", p1, p2);
+        THROW(SW_INVALID_P1P2);
+    }
+
     read_message(buffer, buffer_length);
 
     if ((p2 & P2_MORE) != P2_MORE || buffer_length == 0) {
@@ -197,31 +292,11 @@ void handle_sign_message(
         THROW(SW_OK);
     }
 
-//    // Make in memory buffer into stream
-//    pb_istream_t stream = pb_istream_from_buffer(
-//        raw_transaction,
-//        raw_transaction_length
-//    );
-
-//    // Decode the Transaction
-//    if (!pb_decode(
-//        &stream,
-//        HederaTransactionBody_fields,
-//        &ctx.transaction
-//    )) {
-//        // Oh no couldn't ...
-//        THROW(EXCEPTION_MALFORMED_APDU);
-//    }
-//    handle_transaction_body();
-
     if (p1 != P1_CONFIRM) {
         *tx += context.signature_length + 1;
         PRINTF("Write out (%u): %.*H", *tx, *tx, G_io_apdu_buffer);
         clear_context_sign_message();
         THROW(SW_OK);
-    } else if (context.signature_length + 1 > MAX_MSG_SIZE) {
-        PRINTF("Signature length %u is greater then %u", context.signature_length + 1, MAX_MSG_SIZE);
-        THROW(SW_WRONG_LENGTH);
     }
 
     // Read BIP32 path
@@ -237,12 +312,8 @@ void handle_sign_message(
             : 0
     );
 
-    PRINTF("Saving out (%u): %.*H", context.signature_length + 1, context.signature_length + 1, G_io_apdu_buffer);
-    os_memmove(context.msg_body, G_io_apdu_buffer, context.signature_length + 1);
-
-
 #if defined(TARGET_NANOS)
-    UX_DISPLAY(ui_tx_approve, NULL);
+    UX_DISPLAY(ui_sign_message_approve, NULL);
 #elif defined(TARGET_NANOX)
     ux_flow_init(0, ux_approve_tx_flow, NULL);
 #endif // TARGET_NANOX
