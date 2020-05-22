@@ -30,9 +30,6 @@ module.exports = function(appName, transport) {
     if (index !== undefined) {
       buffer = Utils.bufferFromBip32(BIP32_PATH + "/" + index + "'");
     }
-    if (p1 == this.P1P2.CONFIRM && p2 == this.P1P2.BIN) {
-        throw Error("p2 shold be HEX or BASE58");
-    }
 
     if (data instanceof Buffer) {
       buffer = Buffer.concat([

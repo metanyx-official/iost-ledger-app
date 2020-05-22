@@ -19,7 +19,10 @@
 static struct
 {
     cx_ecfp_public_key_t public_key;
-    uint16_t pk_length;
+    uint16_t output_length;
+    uint8_t pk58[ED25519_KEY_SIZE * 2];
+    uint16_t pk58_length;
+
     // Lines on the UI Screen
     // L1 Only used for title in Nano X compare
     char ui_approve_l2[DISPLAY_SIZE + 1];
@@ -59,7 +62,7 @@ void shift_partial_key()
 {
     os_memmove(
         context.partial_key,
-        G_io_apdu_buffer + context.display_index,
+        context.pk58 + context.display_index,
         DISPLAY_SIZE
     );
 }
@@ -80,13 +83,14 @@ static unsigned int ui_get_public_key_compare_button(
             break;
         case BUTTON_RIGHT: // Right
         case BUTTON_EVT_FAST | BUTTON_RIGHT:
-            if (context.display_index < context.pk_length - DISPLAY_SIZE) {
+            if (context.display_index < context.pk58_length - DISPLAY_SIZE) {
                 context.display_index++;
             }
             shift_partial_key();
             UX_REDISPLAY();
             break;
         case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
+            clear_context_get_public_key();
             ui_idle();
             break;
     }
@@ -104,7 +108,7 @@ static const bagl_element_t* ui_prepro_get_public_key_compare(
     }
     if (
         (element->component.userid == RIGHT_ICON_ID) &&
-        (context.display_index == context.pk_length - DISPLAY_SIZE)
+        (context.display_index == context.pk58_length - DISPLAY_SIZE)
     ) {
         return NULL; // Hide Right Arrow at Right Edge
     }
@@ -113,7 +117,7 @@ static const bagl_element_t* ui_prepro_get_public_key_compare(
 
 void compare_pk() {
     // init partial key str from full str
-    os_memmove(context.partial_key, G_io_apdu_buffer, DISPLAY_SIZE);
+    os_memmove(context.partial_key, context.pk58, DISPLAY_SIZE);
     context.partial_key[DISPLAY_SIZE] = '\0';
     
     // init display index
@@ -133,12 +137,13 @@ static unsigned int ui_get_public_key_approve_button(
     UNUSED(button_mask_counter);
     switch (button_mask) {
     case BUTTON_EVT_RELEASED | BUTTON_LEFT:
+        clear_context_get_public_key();
         io_exchange_status(SW_USER_REJECTED, 0);
         ui_idle();
         break;
 
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
-        io_exchange_status(SW_OK, context.pk_length + 1);
+        io_exchange_status(SW_OK, context.output_length + 1);
         compare_pk();
         break;
 
@@ -197,7 +202,7 @@ UX_STEP_CB(
     ui_idle(),
     {
         .title = "Public Key",
-        .text = (char*) context.full_key
+        .text = (char*) context.pk8
     }
 );
 
@@ -226,15 +231,6 @@ void get_pk(
     const uint8_t p2,
     uint8_t* output
 ) {
-    if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
-        PRINTF("%d != P1_CONFIRM || %d != P1_SILENT\n", p1, p1);
-        THROW(SW_INVALID_P1P2);
-    }
-    if ((p1 == P1_CONFIRM) && (p2 == P2_BIN)) {
-        PRINTF("%d == P1_CONFIRM && %d == P2_BIN\n", p1, p2);
-        THROW(SW_INVALID_P1P2);
-    }
-
     // Derive key
     if (iost_derive_keypair(bip_32_path, bip_32_length, NULL, &context.public_key) != 0) {
         PRINTF("iost_derive_keypair failed\n");
@@ -242,22 +238,25 @@ void get_pk(
     }
 
     uint8_t pk[ED25519_KEY_SIZE] = {};
-    iost_extract_bytes_from_public_key(&context.public_key, pk, &context.pk_length);
-    PRINTF("Get PubKey(%u): %.*H\n", context.pk_length, context.pk_length, pk);
+    iost_extract_bytes_from_public_key(&context.public_key, pk, &context.output_length);
+
+    context.pk58_length = encode_base_58(pk, context.output_length, context.pk58);
+    context.pk58[context.pk58_length] = 0;
 
     // Put Key bytes in APDU buffer
     switch (p2) {
     case P2_HEX:
-        context.pk_length = bin2hex(output, pk, context.pk_length);
+        context.output_length = bin2hex(pk, context.output_length, output);
         break;
     case P2_BASE58:
-        context.pk_length = encode_base_58(pk, context.pk_length, output);
+        context.output_length = context.pk58_length;
+        os_memmove(output, context.pk58, context.output_length);
         break;
     default:
-        os_memmove(output, pk, context.pk_length);
+        os_memmove(output, pk, context.output_length);
         break;
     }
-    output[context.pk_length] = 0;
+    output[context.output_length] = 0;
 }
 
 void handle_get_public_key(
@@ -268,21 +267,22 @@ void handle_get_public_key(
     volatile uint8_t* flags,
     volatile uint16_t* tx
 ) {
+    io_check_p1p2(p1, p2);
+
     // Read BIP32 path
     uint32_t bip_32_path[BIP32_PATH_LENGTH];
     const uint16_t bip_32_length = io_read_bip32(buffer, buffer_length, bip_32_path);
-
     // Populate context with PK
     get_pk(bip_32_path, bip_32_length, p1, p2, G_io_apdu_buffer + *tx);
 
-    if (
-        (p1 != P1_CONFIRM) ||
-        (p2 != P2_HEX && p2 != P2_BASE58)
-    ) {
-        *tx += context.pk_length + 1;
+    io_print_buffer("PubKey", p2 & P2_MORE != P2_BIN, G_io_apdu_buffer + *tx, context.output_length + 1);
+
+    if (p1 != P1_CONFIRM) {
+        *tx += context.output_length + 1;
         clear_context_get_public_key();
         THROW(SW_OK);
     }
+
     // Complete "Export Public | Key #x?"
     iost_snprintf(
         context.ui_approve_l2,

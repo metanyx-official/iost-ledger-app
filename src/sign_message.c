@@ -14,7 +14,8 @@
 static struct sign_tx_context_t {
     uint8_t msg_body[MAX_MSG_SIZE];
     uint16_t msg_length;
-    uint16_t signature_length;
+    uint16_t output_length;
+
     // Lines on the UI Screen
     // L1 Only used for title in Nano X compare
     char ui_approve_l2[DISPLAY_SIZE + 1];
@@ -41,10 +42,10 @@ static const bagl_element_t ui_sign_message_approve[] = {
     UI_ICON_LEFT(LEFT_ICON_ID, BAGL_GLYPH_ICON_CROSS),
     UI_ICON_RIGHT(RIGHT_ICON_ID, BAGL_GLYPH_ICON_CHECK),
     //
-    //    Sign Message
+    //    Sign Transaction
     //      With Key #123?
     //
-    UI_TEXT(LINE_1_ID, 0, 12, 128, "Sign Message"),
+    UI_TEXT(LINE_1_ID, 0, 12, 128, "Sign Transaction"),
     UI_TEXT(LINE_2_ID, 0, 24, 128, context.ui_approve_l2),
 };
 
@@ -53,7 +54,7 @@ void shift_partial_signature()
 {
     os_memmove(
         context.partial_signature,
-        G_io_apdu_buffer + context.display_index,
+        context.msg_body + context.display_index,
         DISPLAY_SIZE
     );
 }
@@ -74,13 +75,14 @@ static unsigned int ui_sign_message_compare_button(
             break;
         case BUTTON_RIGHT: // Right
         case BUTTON_EVT_FAST | BUTTON_RIGHT:
-            if (context.display_index < context.signature_length + 1 - DISPLAY_SIZE) {
+            if (context.display_index < context.msg_length - DISPLAY_SIZE) {
                 context.display_index++;
             }
             shift_partial_signature();
             UX_REDISPLAY();
             break;
         case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
+            clear_context_sign_message();
             ui_idle();
             break;
     }
@@ -98,7 +100,7 @@ static const bagl_element_t* ui_prepro_sign_message_compare(
     }
     if (
         (element->component.userid == RIGHT_ICON_ID) &&
-        (context.display_index == context.signature_length + 1 - DISPLAY_SIZE)
+        (context.display_index == context.msg_length - DISPLAY_SIZE)
     ) {
         return NULL; // Hide Right Arrow at Right Edge
     }
@@ -107,7 +109,7 @@ static const bagl_element_t* ui_prepro_sign_message_compare(
 
 void compare_signature() {
     // init partial key str from full str
-    os_memmove(context.partial_signature, G_io_apdu_buffer, DISPLAY_SIZE);
+    os_memmove(context.partial_signature, context.msg_body, DISPLAY_SIZE);
     context.partial_signature[DISPLAY_SIZE] = '\0';
 
     // init display index
@@ -127,13 +129,13 @@ static unsigned int ui_sign_message_approve_button(
     UNUSED(button_mask_counter);
     switch (button_mask) {
     case BUTTON_EVT_RELEASED | BUTTON_LEFT:
+        clear_context_sign_message();
         io_exchange_status(SW_USER_REJECTED, 0);
         ui_idle();
         break;
 
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
-        PRINTF("Compare signature (%u): %.*H", context.signature_length + 1, context.signature_length + 1, G_io_apdu_buffer);
-        io_exchange_status(SW_OK, context.signature_length + 1);
+        io_exchange_status(SW_OK, context.output_length + 1);
         compare_signature();
         break;
 
@@ -191,8 +193,8 @@ UX_STEP_CB(
     bnnn_paging,
     ui_idle(),
     {
-        .title = "Sign With Key",
-        .text = (char*) context.full_key
+        .title = "Signature",
+        .text = (char*) context.msg_body
     }
 );
 
@@ -255,13 +257,39 @@ void sign_message(
         context.msg_length = iost_hash_bytes(msg_body, context.msg_length, msg_body);
     }
 
-    context.signature_length = iost_sign(
+    context.output_length = iost_sign(
         bip_32_path,
         bip_32_length,
         msg_body,
         context.msg_length,
         signature
     );
+}
+
+void export_signature(
+    const uint8_t p2,
+    const uint8_t* const signature,
+    uint8_t* output
+) {
+    context.msg_length = encode_base_58(signature, context.output_length, context.msg_body);
+    context.msg_body[context.msg_length] = 0;
+
+    // Put Key bytes in APDU buffer
+    switch (p2) {
+    case P2_HEX:
+        context.output_length = bin2hex(signature, context.output_length, output);
+        break;
+    case P2_BASE58:
+        context.output_length = context.msg_length;
+        os_memmove(output, context.msg_body, context.output_length);
+        break;
+    default:
+        os_memmove(output, signature, context.output_length);
+        break;
+    }
+    output[context.output_length] = 0;
+
+
 }
 
 // Sign Handler
@@ -274,34 +302,37 @@ void handle_sign_message(
     volatile uint8_t* flags,
     volatile uint16_t* tx
 ) {
-    if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
-        PRINTF("%d != P1_CONFIRM || %d != P1_SILENT\n", p1, p1);
-        THROW(SW_INVALID_P1P2);
-    }
-    if ((p1 == P1_CONFIRM) && (p2 == P2_BIN)) {
-        PRINTF("%d == P1_CONFIRM && %d == P2_BIN\n", p1, p2);
-        THROW(SW_INVALID_P1P2);
-    }
+    io_check_p1p2(p1, p2);
 
     read_message(buffer, buffer_length);
 
+    uint8_t signature[MAX_MSG_SIZE] = {};
+
+    PRINTF("SIGN_MESSAGE(%u) p1: %u, p2: %u, tx: %u\n", buffer_length, p1, p2, *tx);
+
     if ((p2 & P2_MORE) != P2_MORE || buffer_length == 0) {
-        sign_message(buffer_length == 0, G_io_apdu_buffer);
+        sign_message(buffer_length == 0, signature);
     } else {
         // Wait for next call
         THROW(SW_OK);
     }
 
-    if (p1 != P1_CONFIRM) {
-        *tx += context.signature_length + 1;
-        PRINTF("Write out (%u): %.*H", *tx, *tx, G_io_apdu_buffer);
-        clear_context_sign_message();
-        THROW(SW_OK);
-    }
+    PRINTF("EXPORT_SIGNATURE(%u) %.*H\n", context.msg_length, context.msg_length, context.msg_body);
 
     // Read BIP32 path
     uint32_t bip_32_path[BIP32_PATH_LENGTH] = {};
     const uint16_t bip_32_length = io_read_bip32(context.msg_body, context.msg_length, bip_32_path);
+
+    export_signature(p2, signature, G_io_apdu_buffer + *tx);
+
+    io_print_buffer("Sig", p2 & P2_MORE != P2_BIN, G_io_apdu_buffer + *tx, context.output_length + 1);
+
+    if (p1 != P1_CONFIRM) {
+        *tx += context.output_length + 1;
+        clear_context_sign_message();
+        THROW(SW_OK);
+    }
+
     // Complete "Sign Transaction | With Key #x?"
     iost_snprintf(
         context.ui_approve_l2,

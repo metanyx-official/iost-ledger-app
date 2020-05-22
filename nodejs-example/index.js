@@ -99,17 +99,6 @@ Utils.delay().then(ledger.open).then(async () => {
   test.checkTransfer(await iost.commitTx(iost.newTranfer(account.getID(), trxInfoA[0], 88), account));
   account = iost.makeAccount(trxInfoA[0], keyPairA);
 
-account = {
-name: trxInfoA[0],
-pubKey: pubKeyB.base58,
-sign: async (bytes) => {
-return await ledger.signMessage({
-index: 0,
-message: iost.createHash(bytes)
-});
-}
-};
-
   //! Complete B creation by A and create new account C with hardware keys
   const commitB = await iost.commitTx(trxB, account);
   const pubKeyC = await ledger.getPublicKey({index: 1, p2: ledger.P1P2.BASE58});
