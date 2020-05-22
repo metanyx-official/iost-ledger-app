@@ -15,13 +15,7 @@ static struct sign_tx_context_t {
     uint8_t msg_body[MAX_MSG_SIZE];
     uint16_t msg_length;
     uint16_t output_length;
-
-    // Lines on the UI Screen
-    // L1 Only used for title in Nano X compare
-    char ui_approve_l2[DISPLAY_SIZE + 1];
-    // Sign Message Compare
-    uint8_t display_index;
-    uint8_t partial_signature[DISPLAY_SIZE + 1];
+    ui_context_t ui;
 } context;
 
 
@@ -34,7 +28,7 @@ static const bagl_element_t ui_sign_message_compare[] = {
     //      <partial>
     //
     UI_TEXT(LINE_1_ID, 0, 12, 128, "Signature"),
-    UI_TEXT(LINE_2_ID, 0, 24, 128, context.partial_signature)
+    UI_TEXT(LINE_2_ID, 0, 24, 128, context.ui.partial_msg)
 };
 
 static const bagl_element_t ui_sign_message_approve[] = {
@@ -46,75 +40,24 @@ static const bagl_element_t ui_sign_message_approve[] = {
     //      With Key #123?
     //
     UI_TEXT(LINE_1_ID, 0, 12, 128, "Sign Transaction"),
-    UI_TEXT(LINE_2_ID, 0, 24, 128, context.ui_approve_l2),
+    UI_TEXT(LINE_2_ID, 0, 24, 128, context.ui.approve_l2),
 };
-
-
-void shift_partial_signature()
-{
-    os_memmove(
-        context.partial_signature,
-        context.msg_body + context.display_index,
-        DISPLAY_SIZE
-    );
-}
 
 static unsigned int ui_sign_message_compare_button(
     unsigned int button_mask,
     unsigned int button_mask_counter
 ) {
-    UNUSED(button_mask_counter);
-    switch (button_mask) {
-        case BUTTON_LEFT: // Left
-        case BUTTON_EVT_FAST | BUTTON_LEFT:
-            if (context.display_index > 0) {
-                context.display_index--;
-            }
-            shift_partial_signature();
-            UX_REDISPLAY();
-            break;
-        case BUTTON_RIGHT: // Right
-        case BUTTON_EVT_FAST | BUTTON_RIGHT:
-            if (context.display_index < context.msg_length - DISPLAY_SIZE) {
-                context.display_index++;
-            }
-            shift_partial_signature();
-            UX_REDISPLAY();
-            break;
-        case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
-            clear_context_sign_message();
-            ui_idle();
-            break;
-    }
-    return 0;
+    return ui_compare_button(&context.ui, button_mask, button_mask_counter);
 }
 
 static const bagl_element_t* ui_prepro_sign_message_compare(
     const bagl_element_t* element
 ) {
-    if (
-        (element->component.userid == LEFT_ICON_ID) &&
-        (context.display_index == 0)
-    ) {
-        return NULL; // Hide Left Arrow at Left Edge
-    }
-    if (
-        (element->component.userid == RIGHT_ICON_ID) &&
-        (context.display_index == context.msg_length - DISPLAY_SIZE)
-    ) {
-        return NULL; // Hide Right Arrow at Right Edge
-    }
-    return element;
+    return ui_prepro_compare(&context.ui, element);
 }
 
 void compare_signature() {
-    // init partial key str from full str
-    os_memmove(context.partial_signature, context.msg_body, DISPLAY_SIZE);
-    context.partial_signature[DISPLAY_SIZE] = '\0';
-
-    // init display index
-    context.display_index = 0;
-
+    ui_compare_msg(&context.ui);
     // Display compare with button mask
     UX_DISPLAY(
         ui_sign_message_compare,
@@ -127,22 +70,26 @@ static unsigned int ui_sign_message_approve_button(
     unsigned int button_mask_counter
 ) {
     UNUSED(button_mask_counter);
+
+    const ui_context_t ui = context.ui;
+
     switch (button_mask) {
     case BUTTON_EVT_RELEASED | BUTTON_LEFT:
-        clear_context_sign_message();
         io_exchange_status(SW_USER_REJECTED, 0);
+        clear_context_sign_message();
         ui_idle();
         break;
 
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
         io_exchange_status(SW_OK, context.output_length + 1);
+        clear_context_sign_message();
+        context.ui = ui;
         compare_signature();
         break;
 
     default:
         break;
     }
-
     return 0;
 }
 
@@ -271,8 +218,8 @@ void export_signature(
     const uint8_t* const signature,
     uint8_t* output
 ) {
-    context.msg_length = encode_base_58(signature, context.output_length, context.msg_body);
-    context.msg_body[context.msg_length] = 0;
+    context.ui.msg_length = encode_base_58(signature, context.output_length, context.ui.msg_body);
+    context.ui.msg_body[context.ui.msg_length] = 0;
 
     // Put Key bytes in APDU buffer
     switch (p2) {
@@ -280,8 +227,8 @@ void export_signature(
         context.output_length = bin2hex(signature, context.output_length, output);
         break;
     case P2_BASE58:
-        context.output_length = context.msg_length;
-        os_memmove(output, context.msg_body, context.output_length);
+        context.output_length = context.ui.msg_length;
+        os_memmove(output, context.ui.msg_body, context.output_length);
         break;
     default:
         os_memmove(output, signature, context.output_length);
@@ -335,7 +282,7 @@ void handle_sign_message(
 
     // Complete "Sign Transaction | With Key #x?"
     iost_snprintf(
-        context.ui_approve_l2,
+        context.ui.approve_l2,
         DISPLAY_SIZE,
         "With Key #%u?",
         bip_32_length > 0
@@ -351,6 +298,7 @@ void handle_sign_message(
 
     *flags |= IO_ASYNCH_REPLY;
 }
+
 void clear_context_sign_message()
 {
     os_memset(&context, 0, sizeof(context));

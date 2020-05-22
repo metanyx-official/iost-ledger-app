@@ -138,12 +138,12 @@ void io_check_p1p2(
     const uint8_t p1,
     const uint8_t p2
 ) {
-    if ((p1 != P1_CONFIRM) && (p1 != P1_SILENT)) {
+    if (p1 != P1_CONFIRM && p1 != P1_SILENT) {
         PRINTF("%d != %d && %d != %d\n", p1, P1_CONFIRM, p1, P1_SILENT);
         THROW(SW_INVALID_P1P2);
     }
-    if ((p2 & P2_MORE != P2_BIN) && (p2 & P2_MORE != P2_HEX) && (p2 & P2_MORE != P2_BASE58)) {
-        PRINTF("%d != %d && %d != %d && %d != %d\n", p2 & P2_MORE, P2_BIN, p2 & P2_MORE, P2_HEX, p2 & P2_MORE, P2_BASE58);
+    if (p2 != P2_MORE && (p2 & P2_MORE) != P2_BIN && (p2 & P2_MORE) != P2_HEX && (p2 & P2_MORE) != P2_BASE58) {
+        PRINTF("%d != %d && %d != %d && %d != %d && %d != %d\n", p2, P2_MORE, p2 & P2_MORE, P2_BIN, p2 & P2_MORE, P2_HEX, p2 & P2_MORE, P2_BASE58);
         THROW(SW_INVALID_P1P2);
     }
 }
