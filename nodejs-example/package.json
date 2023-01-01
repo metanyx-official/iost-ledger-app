@@ -19,7 +19,7 @@
     "@ledgerhq/hw-transport-u2f": "^5.9.0",
     "@ledgerhq/hw-transport-node-hid-noevents": "^5.10.0",
     "bip32-path": "^0.4.2",
-    "config": "^3.2.5",
+    "config": "^3.3.8",
     "fetch": "^1.1.0",
     "iost": "^0.1.20"
   },
